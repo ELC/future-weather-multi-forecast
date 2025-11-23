@@ -598,8 +598,12 @@
         };
 
         /**
+         * @typedef {{data: ForecastRequest} | {error: string}} ForecastRequestResult
+         */
+
+        /**
          * @typedef {Object} ForecastForm
-         * @property {() => {success: boolean, data?: ForecastRequest, error?: string}} createRequest - Creates and validates forecast request
+         * @property {() => ForecastRequestResult} createRequest - Creates and validates forecast request
          * @property {() => {valid: boolean, error: string|null}} validate - Validates form values
          * @property {() => void} setDefaultValues - Sets default form values
          */
@@ -636,12 +640,11 @@
                     // Validate inputs first
                     const validation = this.validate();
                     if (!validation.valid) {
-                        return { success: false, error: validation.error };
+                        return { error: validation.error };
                     }
 
                     // Return successful result with request data
                     return {
-                        success: true,
                         data: {
                             date: dateInput.value,
                             coordinates: {
@@ -888,7 +891,7 @@
 
                 // Create and validate request
                 const result = form.createRequest();
-                if (!result.success) {
+                if ('error' in result) {
                     statusMessage.show(result.error, 'error');
                     return;
                 }
