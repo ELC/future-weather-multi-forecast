@@ -652,13 +652,11 @@
                  * @returns {ForecastRequestResult} Request result with data or error
                  */
                 createRequest: function() {
-                    // Validate inputs first
                     const validation = this.validate();
                     if (!validation.valid) {
                         return { error: validation.error };
                     }
 
-                    // Return successful result with request data
                     return {
                         data: {
                             date: dateInput.value,
@@ -674,11 +672,9 @@
                  * @returns {void}
                  */
                 setDefaultValues: () => {
-                    // Set default date to today
                     const today = new Date().toISOString().split('T')[0];
                     dateInput.value = today;
 
-                    // Set default coordinates (New York City)
                     latitudeInput.value = '40.7128';
                     longitudeInput.value = '-74.0060';
                 }
@@ -1015,7 +1011,6 @@
                         weatherService
                     } = components;
 
-                    // Create and validate request
                     const result = form.createRequest();
                     if ('error' in result) {
                         statusMessage.show(result.error, 'error');
@@ -1024,25 +1019,16 @@
 
                     const request = result.data;
 
-                    // Show loading state
                     submitButton.disable();
                     statusMessage.show('Fetching forecast data...', 'loading');
                     forecast.hide();
 
                     try {
-                        // Fetch forecasts from all providers
                         const results = await weatherService.forecast(request);
 
-                        // Hide loading status
                         statusMessage.hide();
-
-                        // Update forecast header
                         forecastHeader.update(request);
-
-                        // Render results
                         forecastServices.render(results);
-
-                        // Show forecast section
                         forecast.show();
 
                     } catch (error) {
@@ -1076,9 +1062,6 @@
 
             const weatherService = createWeatherService([
                 createOpenMeteoService()
-                // Additional services can be added here:
-                // createWeatherAPIService(),
-                // createOpenWeatherMapService(),
             ]);
 
             const appState = createAppState({
@@ -1093,11 +1076,9 @@
 
             appState.setDefaultValues();
 
-            // Register update callback with form
             formElement.onSubmit(appState.update);
         };
 
-        // Initialize app when DOM is ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', initializeApp);
         } else {
