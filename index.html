@@ -1011,24 +1011,32 @@
             };
 
             /**
-             * Fetches and displays forecast
+             * Fetches forecast from weather service
              * @param {ForecastRequest} request - Forecast request parameters
-             * @returns {Promise<void>}
+             * @returns {Promise<Array<ForecastResult>|null>} Forecast results or null if error
              */
-            const fetchAndDisplayForecast = async (request) => {
+            const fetchForecast = async (request) => {
                 try {
-                    const results = await weatherService.forecast(request);
-
-                    statusMessage.hide();
-                    forecastHeader.update(request);
-                    forecastServices.render(results);
-                    forecast.show();
-
+                    return await weatherService.forecast(request);
                 } catch (error) {
                     statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
+                    return null;
                 } finally {
                     submitButton.enable();
                 }
+            };
+
+            /**
+             * Displays forecast results
+             * @param {ForecastRequest} request - Forecast request parameters
+             * @param {Array<ForecastResult>} results - Forecast results to display
+             * @returns {void}
+             */
+            const displayForecast = (request, results) => {
+                statusMessage.hide();
+                forecastHeader.update(request);
+                forecastServices.render(results);
+                forecast.show();
             };
 
             return {
@@ -1051,7 +1059,11 @@
                     if (!request) return;
 
                     showLoadingState();
-                    await fetchAndDisplayForecast(request);
+                    
+                    const results = await fetchForecast(request);
+                    if (!results) return;
+
+                    displayForecast(request, results);
                 }
             };
         };
