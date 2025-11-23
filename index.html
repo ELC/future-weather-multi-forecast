@@ -733,9 +733,9 @@
          * @typedef {Object} ForecastFormComponent
          * @property {() => ForecastRequestResult} createRequest - Creates and validates forecast request
          * @property {() => void} setDefaultValues - Sets default form values
-         * @property {() => void} disableButton - Disables submit button
-         * @property {() => void} enableButton - Enables submit button
-         * @property {(callback: () => Promise<void>) => void} registerSubmitHandler - Registers form submit handler
+         * @property {() => void} disable - Disables form submission
+         * @property {() => void} enable - Enables form submission
+         * @property {(callback: () => Promise<void>) => void} onSubmit - Registers form submit handler
          */
 
         /**
@@ -806,17 +806,17 @@
                     longitudeInput.value = '-74.0060';
                 },
                 /**
-                 * Disables submit button
+                 * Disables form submission
                  * @returns {void}
                  */
-                disableButton: () => {
+                disable: () => {
                     buttonElement.disabled = true;
                 },
                 /**
-                 * Enables submit button
+                 * Enables form submission
                  * @returns {void}
                  */
-                enableButton: () => {
+                enable: () => {
                     buttonElement.disabled = false;
                 },
                 /**
@@ -824,7 +824,7 @@
                  * @param {() => Promise<void>} callback - Async callback to execute on form submit
                  * @returns {void}
                  */
-                registerSubmitHandler: (callback) => {
+                onSubmit: (callback) => {
                     const handleSubmit = async (event) => {
                         event.preventDefault();
                         await callback();
@@ -839,8 +839,8 @@
          * @typedef {Object} ForecastResultComponent
          * @property {() => void} show - Shows forecast section
          * @property {() => void} hide - Hides forecast section
-         * @property {(request: ForecastRequest) => void} updateHeader - Updates forecast header
-         * @property {(results: Array<ForecastResult>) => void} renderServices - Renders forecast services
+         * @property {(request: ForecastRequest) => void} displayInfo - Displays forecast location and date
+         * @property {(results: Array<ForecastResult>) => void} displayResults - Displays weather results
          */
 
         /**
@@ -882,20 +882,20 @@
                     sectionElement.classList.add('forecast--hidden');
                 },
                 /**
-                 * Updates forecast header
+                 * Displays forecast location and date
                  * @param {ForecastRequest} request - Forecast request with coordinates and date
                  * @returns {void}
                  */
-                updateHeader: ({ coordinates, date }) => {
+                displayInfo: ({ coordinates, date }) => {
                     locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
                     dateElement.textContent = formatDate(date);
                 },
                 /**
-                 * Renders forecast services
-                 * @param {Array<ForecastResult>} results - Array of forecast results to render
+                 * Displays weather results
+                 * @param {Array<ForecastResult>} results - Array of forecast results to display
                  * @returns {void}
                  */
-                renderServices: (results) => {
+                displayResults: (results) => {
                     const cardElements = results.map(result => 
                         result.success 
                             ? createWeatherCardSuccessTemplate(result)
@@ -951,7 +951,7 @@
              */
             const showLoadingState = () => {
                 const { forecastForm, statusMessage, forecastResult } = components;
-                forecastForm.disableButton();
+                forecastForm.disable();
                 statusMessage.show('Fetching forecast data...', 'loading');
                 forecastResult.hide();
             };
@@ -969,7 +969,7 @@
                     statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
                     return null;
                 } finally {
-                    forecastForm.enableButton();
+                    forecastForm.enable();
                 }
             };
 
@@ -982,8 +982,8 @@
             const displayForecast = (request, results) => {
                 const { statusMessage, forecastResult } = components;
                 statusMessage.hide();
-                forecastResult.updateHeader(request);
-                forecastResult.renderServices(results);
+                forecastResult.displayInfo(request);
+                forecastResult.displayResults(results);
                 forecastResult.show();
             };
 
@@ -1049,7 +1049,7 @@
 
             appState.setDefaultValues();
 
-            forecastForm.registerSubmitHandler(appState.update);
+            forecastForm.onSubmit(appState.update);
         };
 
         if (document.readyState === 'loading') {
