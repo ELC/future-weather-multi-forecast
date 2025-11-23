@@ -861,10 +861,11 @@
 
         /**
          * Creates a submit button object with enable/disable methods
-         * @param {HTMLButtonElement} buttonElement - The button DOM element
+         * @param {FormElement} formElement - Form element object
          * @returns {SubmitButton} Submit button object with methods
          */
-        const createSubmitButton = (buttonElement) => {
+        const createSubmitButton = (formElement) => {
+            const buttonElement = formElement.button;
             return {
                 enable: () => {
                     buttonElement.disabled = false;
@@ -881,6 +882,7 @@
 
         /**
          * @typedef {Object} FormElement
+         * @property {HTMLButtonElement} button - Form submit button element
          * @property {(appState: AppState, weatherService: WeatherService) => void} registerWeatherService - Registers weather service and sets up form submission
          */
 
@@ -891,6 +893,7 @@
          */
         const createFormElement = (element) => {
             return {
+                button: element.querySelector('.forecast-form__button'),
                 registerWeatherService: (appState, weatherService) => {
                     const handleSubmit = async (event) => {
                         event.preventDefault();
@@ -978,10 +981,6 @@
          * @returns {void}
          */
         const initializeApp = () => {
-            // Get form DOM element
-            const formDOMElement = document.getElementById('forecastForm');
-            
-            // Create UI component objects
             const form = createForecastForm(
                 document.getElementById('dateInput'),
                 document.getElementById('latitudeInput'),
@@ -994,10 +993,9 @@
                 document.getElementById('forecastDate')
             );
             const forecastServices = createForecastServices(document.getElementById('forecastServices'));
-            const submitButton = createSubmitButton(formDOMElement.querySelector('.forecast-form__button'));
-            const formElement = createFormElement(formDOMElement);
+            const formElement = createFormElement(document.getElementById('forecastForm'));
+            const submitButton = createSubmitButton(formElement);
 
-            // Create application state
             const appState = createAppState({
                 form,
                 statusMessage,
@@ -1007,7 +1005,6 @@
                 submitButton
             });
 
-            // Initialize weather service
             const weatherService = createWeatherService([
                 createOpenMeteoService()
                 // Additional services can be added here:
@@ -1015,7 +1012,6 @@
                 // createOpenWeatherMapService(),
             ]);
 
-            // Set default values
             appState.setDefaultValues();
 
             // Register weather service with form
