@@ -483,9 +483,8 @@
              * @param {ForecastRequest} request - Forecast request parameters
              * @returns {Promise<ForecastResult>} Forecast result
              */
-            const fetchForecast = async (request) => {
+            const fetchForecast = async ({ date, coordinates }) => {
                 try {
-                    const { date, coordinates } = request;
                     const { latitude, longitude } = coordinates;
                     
                     const url = new URL('https://api.open-meteo.com/v1/forecast');
@@ -604,8 +603,7 @@
          * @param {ForecastRequest} request - Forecast request to validate
          * @returns {{valid: boolean, error: string|null}} Validation result
          */
-        const validateForecastRequest = (request) => {
-            const { date, coordinates } = request;
+        const validateForecastRequest = ({ date, coordinates }) => {
             const { latitude, longitude } = coordinates;
 
             if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -678,10 +676,7 @@
          * @param {ForecastRequest} request - Forecast request data
          * @returns {void}
          */
-        const updateForecastHeader = (elements, request) => {
-            const { locationElement, dateElement } = elements;
-            const { coordinates, date } = request;
-            
+        const updateForecastHeader = ({ locationElement, dateElement }, { coordinates, date }) => {
             locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
             dateElement.textContent = new Date(date).toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -707,8 +702,7 @@
          * @param {ForecastResult} result - Forecast result with success state
          * @returns {string} HTML template string
          */
-        const createWeatherCardSuccessTemplate = (result) => {
-            const { serviceName, data } = result;
+        const createWeatherCardSuccessTemplate = ({ serviceName, data }) => {
             return `
                 <article class="weather-card">
                     <header class="weather-card__header">
@@ -745,8 +739,7 @@
          * @param {ForecastResult} result - Forecast result with error state
          * @returns {string} HTML template string
          */
-        const createWeatherCardErrorTemplate = (result) => {
-            const { serviceName, error } = result;
+        const createWeatherCardErrorTemplate = ({ serviceName, error }) => {
             return `
                 <article class="weather-card">
                     <header class="weather-card__header">
@@ -909,8 +902,7 @@
          * @param {AppElements} elements - DOM elements
          * @returns {void}
          */
-        const setDefaultFormValues = (elements) => {
-            const { dateInput, latitudeInput, longitudeInput } = elements;
+        const setDefaultFormValues = ({ dateInput, latitudeInput, longitudeInput }) => {
             
             // Set default date to today
             const today = new Date().toISOString().split('T')[0];
