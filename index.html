@@ -766,6 +766,20 @@
          * @returns {ForecastHeader} Forecast header object with methods
          */
         const createForecastHeader = (locationElement, dateElement) => {
+            /**
+             * Formats date string to long locale format
+             * @param {string} date - ISO date string (YYYY-MM-DD)
+             * @returns {string} Formatted date string
+             */
+            const formatDate = (date) => {
+                return new Date(date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            };
+
             return {
                 /**
                  * Updates forecast header with request data
@@ -774,12 +788,7 @@
                  */
                 update: ({ coordinates, date }) => {
                     locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
-                    dateElement.textContent = new Date(date).toLocaleDateString('en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                    });
+                    dateElement.textContent = formatDate(date);
                 }
             };
         };
@@ -850,17 +859,6 @@
                     <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
                 </article>
             `);
-        };
-
-        /**
-         * Creates a weather card element
-         * @param {ForecastResult} result - Forecast result
-         * @returns {HTMLElement} Weather card element
-         */
-        const createWeatherCard = (result) => {
-            return result.success 
-                ? createWeatherCardSuccessTemplate(result)
-                : createWeatherCardErrorTemplate(result);
         };
 
         /**
