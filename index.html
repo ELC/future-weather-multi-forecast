@@ -822,21 +822,27 @@
         };
 
         /**
-         * Renders forecast results
-         * @param {HTMLElement} container - Container element
-         * @param {Array<ForecastResult>} results - Array of forecast results
-         * @returns {void}
+         * @typedef {Object} ForecastServices
+         * @property {(results: Array<ForecastResult>) => void} render - Renders forecast results
          */
-        const renderForecastResults = (container, results) => {
-            // Create weather card elements for all results
-            const cardElements = results.map(result => 
-                result.success 
-                    ? createWeatherCardSuccessTemplate(result)
-                    : createWeatherCardErrorTemplate(result)
-            );
-            
-            // Replace container's children with new elements
-            container.replaceChildren(...cardElements);
+
+        /**
+         * Creates a forecast services container object with render method
+         * @param {HTMLElement} container - Services container element
+         * @returns {ForecastServices} Forecast services object with methods
+         */
+        const createForecastServices = (container) => {
+            return {
+                render: (results) => {
+                    const cardElements = results.map(result => 
+                        result.success 
+                            ? createWeatherCardSuccessTemplate(result)
+                            : createWeatherCardErrorTemplate(result)
+                    );
+                    
+                    container.replaceChildren(...cardElements);
+                }
+            };
         };
 
         /**
@@ -914,7 +920,7 @@
                     forecastHeader.update(request);
 
                     // Render results
-                    renderForecastResults(forecastServices, results);
+                    forecastServices.render(results);
 
                     // Show forecast section
                     forecast.show();
@@ -933,7 +939,7 @@
          * @property {StatusMessage} statusMessage - Status message object
          * @property {ForecastSection} forecast - Forecast section object
          * @property {ForecastHeader} forecastHeader - Forecast header object
-         * @property {HTMLElement} forecastServices - Services container element
+         * @property {ForecastServices} forecastServices - Forecast services object
          * @property {SubmitButton} submitButton - Submit button object
          * @property {() => void} setDefaultValues - Sets default values for all components
          */
@@ -961,7 +967,6 @@
         const initializeApp = () => {
             // Get DOM elements
             const formElement = document.getElementById('forecastForm');
-            const forecastServices = document.getElementById('forecastServices');
             
             // Create UI component objects
             const form = createForecastForm(
@@ -975,6 +980,7 @@
                 document.getElementById('forecastLocation'),
                 document.getElementById('forecastDate')
             );
+            const forecastServices = createForecastServices(document.getElementById('forecastServices'));
             const submitButton = createSubmitButton(formElement.querySelector('.forecast-form__button'));
 
             // Create application state
