@@ -667,15 +667,21 @@
         };
 
         /**
+         * @typedef {Object} ForecastHeaderElements
+         * @property {HTMLElement} locationElement - Location display element
+         * @property {HTMLElement} dateElement - Date display element
+         */
+
+        /**
          * Updates forecast header
-         * @param {Object} params - Parameters
-         * @param {HTMLElement} params.locationElement - Location element
-         * @param {HTMLElement} params.dateElement - Date element
-         * @param {Coordinates} params.coordinates - Location coordinates
-         * @param {string} params.date - Forecast date
+         * @param {ForecastHeaderElements} elements - Header elements
+         * @param {ForecastRequest} request - Forecast request data
          * @returns {void}
          */
-        const updateForecastHeader = ({ locationElement, dateElement, coordinates, date }) => {
+        const updateForecastHeader = (elements, request) => {
+            const { locationElement, dateElement } = elements;
+            const { coordinates, date } = request;
+            
             locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
             dateElement.textContent = new Date(date).toLocaleDateString('en-US', {
                 weekday: 'long',
@@ -698,11 +704,11 @@
 
         /**
          * Creates weather card success template
-         * @param {string} serviceName - Name of the weather service
-         * @param {WeatherData} data - Weather data
+         * @param {ForecastResult} result - Forecast result with success state
          * @returns {string} HTML template string
          */
-        const createWeatherCardSuccessTemplate = (serviceName, data) => {
+        const createWeatherCardSuccessTemplate = (result) => {
+            const { serviceName, data } = result;
             return `
                 <article class="weather-card">
                     <header class="weather-card__header">
@@ -736,11 +742,11 @@
 
         /**
          * Creates weather card error template
-         * @param {string} serviceName - Name of the weather service
-         * @param {string} error - Error message
+         * @param {ForecastResult} result - Forecast result with error state
          * @returns {string} HTML template string
          */
-        const createWeatherCardErrorTemplate = (serviceName, error) => {
+        const createWeatherCardErrorTemplate = (result) => {
+            const { serviceName, error } = result;
             return `
                 <article class="weather-card">
                     <header class="weather-card__header">
@@ -758,11 +764,9 @@
          * @returns {HTMLElement} Weather card element
          */
         const createWeatherCard = (result) => {
-            const { serviceName, data, success, error } = result;
-            
-            const template = success 
-                ? createWeatherCardSuccessTemplate(serviceName, data)
-                : createWeatherCardErrorTemplate(serviceName, error);
+            const template = result.success 
+                ? createWeatherCardSuccessTemplate(result)
+                : createWeatherCardErrorTemplate(result);
             
             return createElement(template);
         };
@@ -776,12 +780,10 @@
         const renderForecastResults = (container, results) => {
             // Build complete HTML template for all cards
             const cardsTemplate = results
-                .map(result => {
-                    const { serviceName, data, success, error } = result;
-                    return success 
-                        ? createWeatherCardSuccessTemplate(serviceName, data)
-                        : createWeatherCardErrorTemplate(serviceName, error);
-                })
+                .map(result => result.success 
+                    ? createWeatherCardSuccessTemplate(result)
+                    : createWeatherCardErrorTemplate(result)
+                )
                 .join('');
             
             // Create wrapper template and parse it
@@ -883,12 +885,10 @@
                     hideStatus(statusMessage);
 
                     // Update forecast header
-                    updateForecastHeader({
-                        locationElement: forecastLocation,
-                        dateElement: forecastDate,
-                        coordinates: request.coordinates,
-                        date: request.date
-                    });
+                    updateForecastHeader(
+                        { locationElement: forecastLocation, dateElement: forecastDate },
+                        request
+                    );
 
                     // Render results
                     renderForecastResults(forecastServices, results);
