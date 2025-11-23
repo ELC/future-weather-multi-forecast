@@ -883,7 +883,7 @@
         /**
          * @typedef {Object} FormElement
          * @property {HTMLButtonElement} button - Form submit button element
-         * @property {(onSubmit: () => Promise<void>) => void} onSubmit - Registers submit callback handler
+         * @property {(callback: () => Promise<void>) => void} onSubmit - Registers async submit callback handler
          */
 
         /**
@@ -936,7 +936,7 @@
                 registerWeatherService: (service) => {
                     weatherService = service;
                 },
-                update: async function() {
+                update: async () => {
                     if (!weatherService) {
                         throw new Error('Weather service not registered');
                     }
@@ -948,7 +948,7 @@
                         forecastHeader,
                         forecastServices,
                         submitButton
-                    } = this;
+                    } = components;
 
                     // Create and validate request
                     const result = form.createRequest();
@@ -1029,7 +1029,7 @@
             appState.registerWeatherService(weatherService);
 
             // Register update callback with form
-            formElement.onSubmit(() => appState.update());
+            formElement.onSubmit(appState.update);
         };
 
         // Initialize app when DOM is ready
