@@ -819,24 +819,12 @@
         // ========================================
 
         /**
-         * @typedef {Object} AppElements
-         * @property {HTMLInputElement} dateInput - Date input element
-         * @property {HTMLInputElement} latitudeInput - Latitude input element
-         * @property {HTMLInputElement} longitudeInput - Longitude input element
-         * @property {StatusMessage} statusMessage - Status message object
-         * @property {ForecastSection} forecast - Forecast section object
-         * @property {ForecastHeader} forecastHeader - Forecast header object
-         * @property {HTMLElement} forecastServices - Services container element
-         * @property {SubmitButton} submitButton - Submit button object
-         */
-
-        /**
          * Creates form submit handler with dependencies
-         * @param {AppElements} elements - DOM elements
+         * @param {AppState} appState - Application state
          * @param {Array<WeatherService>} weatherServices - Weather services
          * @returns {(event: Event) => Promise<void>} Form submit handler
          */
-        const createFormSubmitHandler = (elements, weatherServices) => {
+        const createFormSubmitHandler = (appState, weatherServices) => {
             /**
              * Handles form submission
              * @param {Event} event - Form submit event
@@ -854,7 +842,7 @@
                     forecastHeader,
                     forecastServices,
                     submitButton
-                } = elements;
+                } = appState;
 
                 // Create request object
                 const request = {
@@ -902,19 +890,36 @@
         };
 
         /**
-         * Sets default form values
-         * @param {AppElements} elements - DOM elements
-         * @returns {void}
+         * @typedef {Object} AppState
+         * @property {HTMLInputElement} dateInput - Date input element
+         * @property {HTMLInputElement} latitudeInput - Latitude input element
+         * @property {HTMLInputElement} longitudeInput - Longitude input element
+         * @property {StatusMessage} statusMessage - Status message object
+         * @property {ForecastSection} forecast - Forecast section object
+         * @property {ForecastHeader} forecastHeader - Forecast header object
+         * @property {HTMLElement} forecastServices - Services container element
+         * @property {SubmitButton} submitButton - Submit button object
+         * @property {() => void} setDefaultValues - Sets default form values
          */
-        const setDefaultFormValues = ({ dateInput, latitudeInput, longitudeInput }) => {
-            
-            // Set default date to today
-            const today = new Date().toISOString().split('T')[0];
-            dateInput.value = today;
 
-            // Set default coordinates (New York City)
-            latitudeInput.value = '40.7128';
-            longitudeInput.value = '-74.0060';
+        /**
+         * Creates application state object with UI components and methods
+         * @param {Object} components - UI components
+         * @returns {AppState} Application state object
+         */
+        const createAppState = (components) => {
+            return {
+                ...components,
+                setDefaultValues: () => {
+                    // Set default date to today
+                    const today = new Date().toISOString().split('T')[0];
+                    components.dateInput.value = today;
+
+                    // Set default coordinates (New York City)
+                    components.latitudeInput.value = '40.7128';
+                    components.longitudeInput.value = '-74.0060';
+                }
+            };
         };
 
         /**
@@ -938,7 +943,8 @@
             );
             const submitButton = createSubmitButton(form.querySelector('.forecast-form__button'));
 
-            const elements = {
+            // Create application state
+            const appState = createAppState({
                 dateInput,
                 latitudeInput,
                 longitudeInput,
@@ -947,7 +953,7 @@
                 forecastHeader,
                 forecastServices,
                 submitButton
-            };
+            });
 
             // Initialize weather services
             const weatherServices = [
@@ -958,10 +964,10 @@
             ];
 
             // Set default values
-            setDefaultFormValues(elements);
+            appState.setDefaultValues();
 
             // Create and attach form submit handler
-            const handleFormSubmit = createFormSubmitHandler(elements, weatherServices);
+            const handleFormSubmit = createFormSubmitHandler(appState, weatherServices);
             form.addEventListener('submit', handleFormSubmit);
         };
 
