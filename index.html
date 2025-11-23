@@ -985,7 +985,7 @@
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
-            const { form, statusMessage, forecast, submitButton } = components;
+            const { form, statusMessage, forecast, submitButton, forecastHeader, forecastServices, weatherService } = components;
 
             /**
              * Validates and creates forecast request
@@ -1010,6 +1010,27 @@
                 forecast.hide();
             };
 
+            /**
+             * Fetches and displays forecast
+             * @param {ForecastRequest} request - Forecast request parameters
+             * @returns {Promise<void>}
+             */
+            const fetchAndDisplayForecast = async (request) => {
+                try {
+                    const results = await weatherService.forecast(request);
+
+                    statusMessage.hide();
+                    forecastHeader.update(request);
+                    forecastServices.render(results);
+                    forecast.show();
+
+                } catch (error) {
+                    statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
+                } finally {
+                    submitButton.enable();
+                }
+            };
+
             return {
                 ...components,
                 /**
@@ -1026,30 +1047,11 @@
                  * @returns {Promise<void>}
                  */
                 update: async () => {
-                    const {
-                        forecastHeader,
-                        forecastServices,
-                        weatherService
-                    } = components;
-
                     const request = validateRequest();
                     if (!request) return;
 
                     showLoadingState();
-
-                    try {
-                        const results = await weatherService.forecast(request);
-
-                        statusMessage.hide();
-                        forecastHeader.update(request);
-                        forecastServices.render(results);
-                        forecast.show();
-
-                    } catch (error) {
-                        statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
-                    } finally {
-                        submitButton.enable();
-                    }
+                    await fetchAndDisplayForecast(request);
                 }
             };
         };
