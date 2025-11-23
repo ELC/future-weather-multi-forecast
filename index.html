@@ -615,71 +615,6 @@
          * @property {() => void} setDefaultValues - Sets default form values
          */
 
-        /**
-         * Creates a forecast form object with input management methods
-         * @param {HTMLInputElement} dateInput - Date input element
-         * @param {HTMLInputElement} latitudeInput - Latitude input element
-         * @param {HTMLInputElement} longitudeInput - Longitude input element
-         * @returns {ForecastForm} Forecast form object with methods
-         */
-        const createForecastForm = (dateInput, latitudeInput, longitudeInput) => {
-            return {
-                /**
-                 * Validates form values
-                 * @returns {{valid: boolean, error: string|null}} Validation result
-                 */
-                validate: () => {
-                    const date = dateInput.value;
-                    const latitude = parseFloat(latitudeInput.value);
-                    const longitude = parseFloat(longitudeInput.value);
-
-                    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                        return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
-                    }
-
-                    if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-                        return { valid: false, error: 'Latitude must be between -90 and 90.' };
-                    }
-
-                    if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-                        return { valid: false, error: 'Longitude must be between -180 and 180.' };
-                    }
-
-                    return { valid: true, error: null };
-                },
-                /**
-                 * Creates and validates forecast request
-                 * @returns {ForecastRequestResult} Request result with data or error
-                 */
-                createRequest: function() {
-                    const validation = this.validate();
-                    if (!validation.valid) {
-                        return { error: validation.error };
-                    }
-
-                    return {
-                        data: {
-                            date: dateInput.value,
-                            coordinates: {
-                                latitude: parseFloat(latitudeInput.value),
-                                longitude: parseFloat(longitudeInput.value)
-                            }
-                        }
-                    };
-                },
-                /**
-                 * Sets default form values
-                 * @returns {void}
-                 */
-                setDefaultValues: () => {
-                    const today = new Date().toISOString().split('T')[0];
-                    dateInput.value = today;
-
-                    latitudeInput.value = '40.7128';
-                    longitudeInput.value = '-74.0060';
-                }
-            };
-        };
 
         // ========================================
         // View Layer - DOM Manipulation
@@ -790,74 +725,9 @@
         };
 
 
-        /**
-         * @typedef {Object} SubmitButton
-         * @property {() => void} enable - Enables the submit button
-         * @property {() => void} disable - Disables the submit button
-         */
-
-        /**
-         * Creates a submit button object with enable/disable methods
-         * @param {FormElement} formElement - Form element object
-         * @returns {SubmitButton} Submit button object with methods
-         */
-        const createSubmitButton = (formElement) => {
-            const buttonElement = formElement.button;
-            return {
-                /**
-                 * Enables the submit button
-                 * @returns {void}
-                 */
-                enable: () => {
-                    buttonElement.disabled = false;
-                },
-                /**
-                 * Disables the submit button
-                 * @returns {void}
-                 */
-                disable: () => {
-                    buttonElement.disabled = true;
-                }
-            };
-        };
-
         // ========================================
         // Application Controller
         // ========================================
-
-        /**
-         * @typedef {Object} FormElement
-         * @property {HTMLButtonElement} button - Form submit button element
-         * @property {(callback: () => Promise<void>) => void} onSubmit - Registers async submit callback handler
-         */
-
-        /**
-         * Creates a form element object with event handling
-         * @param {HTMLFormElement} element - Form DOM element
-         * @returns {FormElement} Form element object with methods
-         */
-        const createFormElement = (element) => {
-            return {
-                /**
-                 * Form submit button element
-                 * @type {HTMLButtonElement}
-                 */
-                button: element.querySelector('.forecast-form__button'),
-                /**
-                 * Registers async submit callback handler
-                 * @param {() => Promise<void>} callback - Async callback to execute on form submit
-                 * @returns {void}
-                 */
-                onSubmit: (callback) => {
-                    const handleSubmit = async (event) => {
-                        event.preventDefault();
-                        await callback();
-                    };
-
-                    element.addEventListener('submit', handleSubmit);
-                }
-            };
-        };
 
         /**
          * @typedef {Object} ForecastFormComponent
@@ -869,40 +739,99 @@
          */
 
         /**
-         * Creates a forecast form component with encapsulated sub-components
-         * @param {ForecastForm} form - Forecast form object
-         * @param {FormElement} element - Form element object
-         * @param {SubmitButton} button - Submit button object
+         * Creates a forecast form component
+         * @param {HTMLFormElement} formElement - Form DOM element
+         * @param {HTMLInputElement} dateInput - Date input element
+         * @param {HTMLInputElement} latitudeInput - Latitude input element
+         * @param {HTMLInputElement} longitudeInput - Longitude input element
          * @returns {ForecastFormComponent} Forecast form component
          */
-        const createForecastFormComponent = (form, element, button) => {
+        const createForecastFormComponent = (formElement, dateInput, latitudeInput, longitudeInput) => {
+            const buttonElement = formElement.querySelector('.forecast-form__button');
+
+            /**
+             * Validates form values
+             * @returns {{valid: boolean, error: string|null}} Validation result
+             */
+            const validate = () => {
+                const date = dateInput.value;
+                const latitude = parseFloat(latitudeInput.value);
+                const longitude = parseFloat(longitudeInput.value);
+
+                if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                    return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+                }
+
+                if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+                    return { valid: false, error: 'Latitude must be between -90 and 90.' };
+                }
+
+                if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+                    return { valid: false, error: 'Longitude must be between -180 and 180.' };
+                }
+
+                return { valid: true, error: null };
+            };
+
             return {
                 /**
                  * Creates and validates forecast request
                  * @returns {ForecastRequestResult} Request result with data or error
                  */
-                createRequest: () => form.createRequest(),
+                createRequest: () => {
+                    const validation = validate();
+                    if (!validation.valid) {
+                        return { error: validation.error };
+                    }
+
+                    return {
+                        data: {
+                            date: dateInput.value,
+                            coordinates: {
+                                latitude: parseFloat(latitudeInput.value),
+                                longitude: parseFloat(longitudeInput.value)
+                            }
+                        }
+                    };
+                },
                 /**
                  * Sets default form values
                  * @returns {void}
                  */
-                setDefaultValues: () => form.setDefaultValues(),
+                setDefaultValues: () => {
+                    const today = new Date().toISOString().split('T')[0];
+                    dateInput.value = today;
+
+                    latitudeInput.value = '40.7128';
+                    longitudeInput.value = '-74.0060';
+                },
                 /**
                  * Disables submit button
                  * @returns {void}
                  */
-                disableButton: () => button.disable(),
+                disableButton: () => {
+                    buttonElement.disabled = true;
+                },
                 /**
                  * Enables submit button
                  * @returns {void}
                  */
-                enableButton: () => button.enable(),
+                enableButton: () => {
+                    buttonElement.disabled = false;
+                },
                 /**
                  * Registers form submit handler
                  * @param {() => Promise<void>} callback - Async callback to execute on form submit
                  * @returns {void}
                  */
-                registerSubmitHandler: (callback) => element.onSubmit(callback)
+                registerSubmitHandler: (callback) => {
+                    const handleSubmit = async (event) => {
+                        event.preventDefault();
+                        await callback();
+                    };
+
+                    formElement.addEventListener('submit', handleSubmit);
+                }
             };
         };
 
@@ -1091,16 +1020,11 @@
          * @returns {void}
          */
         const initializeApp = () => {
-            const formElement = createFormElement(document.getElementById('forecastForm'));
-
             const forecastForm = createForecastFormComponent(
-                createForecastForm(
-                    document.getElementById('dateInput'),
-                    document.getElementById('latitudeInput'),
-                    document.getElementById('longitudeInput')
-                ),
-                formElement,
-                createSubmitButton(formElement)
+                document.getElementById('forecastForm'),
+                document.getElementById('dateInput'),
+                document.getElementById('latitudeInput'),
+                document.getElementById('longitudeInput')
             );
 
             const statusMessage = createStatusMessage(document.getElementById('statusMessage'));
