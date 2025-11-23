@@ -922,6 +922,7 @@
          * @property {ForecastResultComponent} forecastResult - Forecast result display components
          * @property {WeatherService} weatherService - Weather service object
          * @property {() => void} setDefaultValues - Sets default values for all components
+         * @property {() => void} initialize - Initializes the application
          * @property {() => Promise<void>} update - Updates forecast with registered weather service
          */
 
@@ -998,6 +999,14 @@
                     forecastForm.setDefaultValues();
                 },
                 /**
+                 * Initializes the application
+                 * @returns {void}
+                 */
+                initialize: function() {
+                    const { forecastForm } = components;
+                    forecastForm.onSubmit(this.update);
+                },
+                /**
                  * Updates forecast with registered weather service
                  * @returns {Promise<void>}
                  */
@@ -1048,8 +1057,7 @@
             });
 
             appState.setDefaultValues();
-
-            forecastForm.onSubmit(appState.update);
+            appState.initialize();
         };
 
         if (document.readyState === 'loading') {
@@ -1060,4 +1068,3 @@
     </script>
 </body>
 </html>
-
