@@ -720,74 +720,6 @@
             };
         };
 
-        /**
-         * @typedef {Object} ForecastSection
-         * @property {() => void} show - Shows forecast section
-         * @property {() => void} hide - Hides forecast section
-         */
-
-        /**
-         * Creates a forecast section object with show/hide methods
-         * @param {HTMLElement} element - Forecast section element
-         * @returns {ForecastSection} Forecast section object with methods
-         */
-        const createForecastSection = (element) => {
-            return {
-                /**
-                 * Shows forecast section
-                 * @returns {void}
-                 */
-                show: () => {
-                    element.classList.remove('forecast--hidden');
-                },
-                /**
-                 * Hides forecast section
-                 * @returns {void}
-                 */
-                hide: () => {
-                    element.classList.add('forecast--hidden');
-                }
-            };
-        };
-
-        /**
-         * @typedef {Object} ForecastHeader
-         * @property {(request: ForecastRequest) => void} update - Updates forecast header with request data
-         */
-
-        /**
-         * Creates a forecast header object with update method
-         * @param {HTMLElement} locationElement - Location display element
-         * @param {HTMLElement} dateElement - Date display element
-         * @returns {ForecastHeader} Forecast header object with methods
-         */
-        const createForecastHeader = (locationElement, dateElement) => {
-            /**
-             * Formats date string to long locale format
-             * @param {string} date - ISO date string (YYYY-MM-DD)
-             * @returns {string} Formatted date string
-             */
-            const formatDate = (date) => {
-                return new Date(date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                });
-            };
-
-            return {
-                /**
-                 * Updates forecast header with request data
-                 * @param {ForecastRequest} request - Forecast request with coordinates and date
-                 * @returns {void}
-                 */
-                update: ({ coordinates, date }) => {
-                    locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
-                    dateElement.textContent = formatDate(date);
-                }
-            };
-        };
 
         /**
          * Creates an HTML element from a template string
@@ -857,34 +789,6 @@
             `);
         };
 
-        /**
-         * @typedef {Object} ForecastServices
-         * @property {(results: Array<ForecastResult>) => void} render - Renders forecast results
-         */
-
-        /**
-         * Creates a forecast services container object with render method
-         * @param {HTMLElement} container - Services container element
-         * @returns {ForecastServices} Forecast services object with methods
-         */
-        const createForecastServices = (container) => {
-            return {
-                /**
-                 * Renders forecast results
-                 * @param {Array<ForecastResult>} results - Array of forecast results to render
-                 * @returns {void}
-                 */
-                render: (results) => {
-                    const cardElements = results.map(result => 
-                        result.success 
-                            ? createWeatherCardSuccessTemplate(result)
-                            : createWeatherCardErrorTemplate(result)
-                    );
-                    
-                    container.replaceChildren(...cardElements);
-                }
-            };
-        };
 
         /**
          * @typedef {Object} SubmitButton
@@ -1011,36 +915,66 @@
          */
 
         /**
-         * Creates a forecast result component with encapsulated sub-components
-         * @param {ForecastSection} section - Forecast section object
-         * @param {ForecastHeader} header - Forecast header object
-         * @param {ForecastServices} services - Forecast services object
+         * Creates a forecast result component
+         * @param {HTMLElement} sectionElement - Forecast section element
+         * @param {HTMLElement} locationElement - Location display element
+         * @param {HTMLElement} dateElement - Date display element
+         * @param {HTMLElement} servicesContainer - Services container element
          * @returns {ForecastResultComponent} Forecast result component
          */
-        const createForecastResultComponent = (section, header, services) => {
+        const createForecastResultComponent = (sectionElement, locationElement, dateElement, servicesContainer) => {
+            /**
+             * Formats date string to long locale format
+             * @param {string} date - ISO date string (YYYY-MM-DD)
+             * @returns {string} Formatted date string
+             */
+            const formatDate = (date) => {
+                return new Date(date).toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            };
+
             return {
                 /**
                  * Shows forecast section
                  * @returns {void}
                  */
-                show: () => section.show(),
+                show: () => {
+                    sectionElement.classList.remove('forecast--hidden');
+                },
                 /**
                  * Hides forecast section
                  * @returns {void}
                  */
-                hide: () => section.hide(),
+                hide: () => {
+                    sectionElement.classList.add('forecast--hidden');
+                },
                 /**
                  * Updates forecast header
                  * @param {ForecastRequest} request - Forecast request with coordinates and date
                  * @returns {void}
                  */
-                updateHeader: (request) => header.update(request),
+                updateHeader: ({ coordinates, date }) => {
+                    locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
+                    dateElement.textContent = formatDate(date);
+                },
                 /**
                  * Renders forecast services
                  * @param {Array<ForecastResult>} results - Array of forecast results to render
                  * @returns {void}
                  */
-                renderServices: (results) => services.render(results)
+                renderServices: (results) => {
+                    const cardElements = results.map(result => 
+                        result.success 
+                            ? createWeatherCardSuccessTemplate(result)
+                            : createWeatherCardErrorTemplate(result)
+                    );
+                    
+                    servicesContainer.replaceChildren(...cardElements);
+                }
             };
         };
 
@@ -1172,12 +1106,10 @@
             const statusMessage = createStatusMessage(document.getElementById('statusMessage'));
 
             const forecastResult = createForecastResultComponent(
-                createForecastSection(document.getElementById('forecastResults')),
-                createForecastHeader(
-                    document.getElementById('forecastLocation'),
-                    document.getElementById('forecastDate')
-                ),
-                createForecastServices(document.getElementById('forecastServices'))
+                document.getElementById('forecastResults'),
+                document.getElementById('forecastLocation'),
+                document.getElementById('forecastDate'),
+                document.getElementById('forecastServices')
             );
 
             const weatherService = createWeatherService([
