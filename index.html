@@ -587,14 +587,22 @@
         // ========================================
 
         /**
-         * Fetches forecasts from all available weather services
-         * @param {ForecastRequest} request - Forecast request parameters
-         * @param {Array<WeatherService>} services - Array of weather services
-         * @returns {Promise<Array<ForecastResult>>} Array of forecast results
+         * @typedef {Object} WeatherProviders
+         * @property {(request: ForecastRequest) => Promise<Array<ForecastResult>>} forecast - Fetches forecasts from all providers
          */
-        const fetchAllForecasts = async (request, services) => {
-            const promises = services.map(service => service.fetchForecast(request));
-            return await Promise.all(promises);
+
+        /**
+         * Creates a weather providers object with multiple forecast services
+         * @param {Array<WeatherService>} providers - Array of weather service providers
+         * @returns {WeatherProviders} Weather providers object with forecast method
+         */
+        const createWeatherProviders = (providers) => {
+            return {
+                forecast: async (request) => {
+                    const promises = providers.map(provider => provider.fetchForecast(request));
+                    return await Promise.all(promises);
+                }
+            };
         };
 
         /**
@@ -874,10 +882,10 @@
         /**
          * Creates form submit handler with dependencies
          * @param {AppState} appState - Application state
-         * @param {Array<WeatherService>} weatherServices - Weather services
+         * @param {WeatherProviders} weatherProviders - Weather providers
          * @returns {(event: Event) => Promise<void>} Form submit handler
          */
-        const createFormSubmitHandler = (appState, weatherServices) => {
+        const createFormSubmitHandler = (appState, weatherProviders) => {
             /**
              * Handles form submission
              * @param {Event} event - Form submit event
@@ -910,8 +918,8 @@
                 forecast.hide();
 
                 try {
-                    // Fetch forecasts from all services
-                    const results = await fetchAllForecasts(request, weatherServices);
+                    // Fetch forecasts from all providers
+                    const results = await weatherProviders.forecast(request);
 
                     // Hide loading status
                     statusMessage.hide();
@@ -993,19 +1001,19 @@
                 submitButton
             });
 
-            // Initialize weather services
-            const weatherServices = [
+            // Initialize weather providers
+            const weatherProviders = createWeatherProviders([
                 createOpenMeteoService()
                 // Additional services can be added here:
                 // createWeatherAPIService(),
                 // createOpenWeatherMapService(),
-            ];
+            ]);
 
             // Set default values
             appState.setDefaultValues();
 
             // Create and attach form submit handler
-            const handleFormSubmit = createFormSubmitHandler(appState, weatherServices);
+            const handleFormSubmit = createFormSubmitHandler(appState, weatherProviders);
             formElement.addEventListener('submit', handleFormSubmit);
         };
 
