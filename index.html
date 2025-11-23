@@ -600,6 +600,7 @@
         /**
          * @typedef {Object} ForecastForm
          * @property {() => {success: boolean, data?: ForecastRequest, error?: string}} createRequest - Creates and validates forecast request
+         * @property {() => {valid: boolean, error: string|null}} validate - Validates form values
          * @property {() => void} setDefaultValues - Sets default form values
          */
 
@@ -611,33 +612,43 @@
          * @returns {ForecastForm} Forecast form object with methods
          */
         const createForecastForm = (dateInput, latitudeInput, longitudeInput) => {
+            const validate = () => {
+                const date = dateInput.value;
+                const latitude = parseFloat(latitudeInput.value);
+                const longitude = parseFloat(longitudeInput.value);
+
+                if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                    return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+                }
+
+                if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+                    return { valid: false, error: 'Latitude must be between -90 and 90.' };
+                }
+
+                if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+                    return { valid: false, error: 'Longitude must be between -180 and 180.' };
+                }
+
+                return { valid: true, error: null };
+            };
+
             return {
+                validate,
                 createRequest: () => {
-                    const date = dateInput.value;
-                    const latitude = parseFloat(latitudeInput.value);
-                    const longitude = parseFloat(longitudeInput.value);
-
-                    // Validate inputs
-                    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                        return { success: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
-                    }
-
-                    if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-                        return { success: false, error: 'Latitude must be between -90 and 90.' };
-                    }
-
-                    if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-                        return { success: false, error: 'Longitude must be between -180 and 180.' };
+                    // Validate inputs first
+                    const validation = validate();
+                    if (!validation.valid) {
+                        return { success: false, error: validation.error };
                     }
 
                     // Return successful result with request data
                     return {
                         success: true,
                         data: {
-                            date,
+                            date: dateInput.value,
                             coordinates: {
-                                latitude,
-                                longitude
+                                latitude: parseFloat(latitudeInput.value),
+                                longitude: parseFloat(longitudeInput.value)
                             }
                         }
                     };
