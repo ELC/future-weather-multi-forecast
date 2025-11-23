@@ -483,9 +483,8 @@
              * @param {ForecastRequest} request - Forecast request parameters
              * @returns {Promise<ForecastResult>} Forecast result
              */
-            const fetchForecast = async ({ date, coordinates }) => {
+            const fetchForecast = async ({ date, coordinates: { latitude, longitude } }) => {
                 try {
-                    const { latitude, longitude } = coordinates;
                     
                     const url = new URL('https://api.open-meteo.com/v1/forecast');
                     url.searchParams.append('latitude', latitude.toString());
@@ -603,8 +602,7 @@
          * @param {ForecastRequest} request - Forecast request to validate
          * @returns {{valid: boolean, error: string|null}} Validation result
          */
-        const validateForecastRequest = ({ date, coordinates }) => {
-            const { latitude, longitude } = coordinates;
+        const validateForecastRequest = ({ date, coordinates: { latitude, longitude } }) => {
 
             if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
                 return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
@@ -704,7 +702,10 @@
          * @param {ForecastResult} result - Forecast result with success state
          * @returns {string} HTML template string
          */
-        const createWeatherCardSuccessTemplate = ({ serviceName, data }) => {
+        const createWeatherCardSuccessTemplate = ({ 
+            serviceName, 
+            data: { temperature, temperatureFahrenheit, description, icon, windSpeed, precipitation } 
+        }) => {
             return `
                 <article class="weather-card">
                     <header class="weather-card__header">
@@ -712,24 +713,24 @@
                         <span class="weather-card__status">Active</span>
                     </header>
                     <div class="weather-card__main">
-                        <div class="weather-card__temperature">${data.temperature}°C</div>
+                        <div class="weather-card__temperature">${temperature}°C</div>
                         <div class="weather-card__condition">
-                            <div class="weather-card__description">${data.description}</div>
-                            <div class="weather-card__icon">${data.icon}</div>
+                            <div class="weather-card__description">${description}</div>
+                            <div class="weather-card__icon">${icon}</div>
                         </div>
                     </div>
                     <div class="weather-card__details">
                         <div class="weather-card__detail">
                             <span class="weather-card__detail-label">Fahrenheit</span>
-                            <span class="weather-card__detail-value">${data.temperatureFahrenheit}°F</span>
+                            <span class="weather-card__detail-value">${temperatureFahrenheit}°F</span>
                         </div>
                         <div class="weather-card__detail">
                             <span class="weather-card__detail-label">Wind Speed</span>
-                            <span class="weather-card__detail-value">${data.windSpeed} km/h</span>
+                            <span class="weather-card__detail-value">${windSpeed} km/h</span>
                         </div>
                         <div class="weather-card__detail">
                             <span class="weather-card__detail-label">Precipitation</span>
-                            <span class="weather-card__detail-value">${data.precipitation} mm</span>
+                            <span class="weather-card__detail-value">${precipitation} mm</span>
                         </div>
                     </div>
                 </article>
