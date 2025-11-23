@@ -320,28 +320,12 @@
                     >
                 </div>
                 <div class="forecast-form__field">
-                    <label for="latitudeInput" class="forecast-form__label">Latitude</label>
+                    <label for="cityInput" class="forecast-form__label">City</label>
                     <input 
-                        type="number" 
-                        id="latitudeInput" 
+                        type="text" 
+                        id="cityInput" 
                         class="forecast-form__input" 
-                        placeholder="e.g., 40.7128"
-                        step="0.0001"
-                        min="-90"
-                        max="90"
-                        required
-                    >
-                </div>
-                <div class="forecast-form__field">
-                    <label for="longitudeInput" class="forecast-form__label">Longitude</label>
-                    <input 
-                        type="number" 
-                        id="longitudeInput" 
-                        class="forecast-form__input" 
-                        placeholder="e.g., -74.0060"
-                        step="0.0001"
-                        min="-180"
-                        max="180"
+                        placeholder="e.g., New York, Paris, Tokyo"
                         required
                     >
                 </div>
@@ -375,13 +359,16 @@
          */
         const CONFIG = {
             DEFAULT_LOCATION: {
-                latitude: 40.7128,
-                longitude: -74.0060,
-                name: 'New York, NY'
+                city: 'New York'
             },
             OPEN_METEO: {
                 API_URL: 'https://api.open-meteo.com/v1/forecast',
                 DAILY_PARAMS: ['temperature_2m_max', 'temperature_2m_min', 'weathercode', 'precipitation_sum', 'windspeed_10m_max']
+            },
+            GEOCODING: {
+                API_URL: 'https://nominatim.openstreetmap.org/search',
+                FORMAT: 'json',
+                LIMIT: 1
             },
             VALIDATION: {
                 LATITUDE_MIN: -90,
@@ -458,6 +445,7 @@
          * @typedef {Object} ForecastRequest
          * @property {string} date - ISO date string (YYYY-MM-DD)
          * @property {Coordinates} coordinates - Location coordinates
+         * @property {string} [displayName] - Full display name from geocoding service
          */
 
         /**
@@ -516,6 +504,50 @@
          * Result of JSON fetch and parse operation
          */
 
+        // --- Geocoding API Types ---
+
+        /**
+         * @typedef {Object} NominatimLocation
+         * @property {string} lat - Latitude as string
+         * @property {string} lon - Longitude as string
+         * @property {string} display_name - Full display name of the location
+         * @property {string} [place_id] - Unique place identifier
+         * @property {string} [type] - Type of location (city, town, etc.)
+         */
+
+        /**
+         * @typedef {Array<NominatimLocation>} NominatimApiResponse
+         * Array of location results from Nominatim API
+         */
+
+        /**
+         * @typedef {{data: NominatimApiResponse} | {error: string}} GeocodingFetchResult
+         * Result of geocoding API fetch and parse operation
+         */
+
+        /**
+         * @typedef {{data: NominatimLocation} | {error: string}} GeocodingValidationResult
+         * Result of geocoding validation - either a single location or error
+         */
+
+        /**
+         * @typedef {Object} CoordinateData
+         * @property {number} latitude - Latitude coordinate
+         * @property {number} longitude - Longitude coordinate
+         * @property {string} displayName - Full display name of the location
+         */
+
+        /**
+         * @typedef {{data: CoordinateData} | {error: string}} GeocodingResult
+         * Result of geocoding operation - either coordinate data or error message
+         */
+
+        /**
+         * @typedef {Object} GeocodingService
+         * @property {string} name - Name of the geocoding service
+         * @property {(cityName: string) => Promise<GeocodingResult>} geocode - Converts city name to coordinates
+         */
+
         // --- Constants Types ---
 
         /**
@@ -539,7 +571,7 @@
 
         /**
          * @typedef {Object} ForecastFormComponent
-         * @property {() => ForecastRequestResult} createRequest - Creates and validates forecast request
+         * @property {() => Promise<ForecastRequestResult>} createRequest - Creates and validates forecast request (async for geocoding)
          * @property {() => void} setDefaultValues - Sets default form values
          * @property {() => void} disable - Disables form submission
          * @property {() => void} enable - Enables form submission
@@ -619,6 +651,109 @@
             { max: 86, icon: '🌨️' },
             { max: Infinity, icon: '⛈️' }
         ];
+
+        // ========================================
+        // Business Logic - Geocoding Service
+        // ========================================
+
+        /**
+         * Creates a geocoding service for converting city names to coordinates
+         * @returns {GeocodingService} Geocoding service implementation
+         */
+        const createGeocodingService = () => {
+            const name = 'OpenStreetMap Nominatim';
+
+            /**
+             * Builds geocoding API URL
+             * @param {string} cityName - Name of the city
+             * @returns {string} API URL
+             */
+            const buildApiUrl = (cityName) => {
+                const url = new URL(CONFIG.GEOCODING.API_URL);
+                url.searchParams.append('q', cityName.trim());
+                url.searchParams.append('format', CONFIG.GEOCODING.FORMAT);
+                url.searchParams.append('limit', CONFIG.GEOCODING.LIMIT.toString());
+                return url.toString();
+            };
+
+            /**
+             * Fetches and parses geocoding results
+             * @param {string} url - API URL
+             * @returns {Promise<GeocodingFetchResult>} Parsed results or error
+             */
+            const fetchAndParseResults = async (url) => {
+                const response = await fetch(url).catch(() => null);
+
+                if (!response) {
+                    return { error: 'Network error occurred' };
+                }
+
+                if (!response.ok) {
+                    return { error: `Geocoding failed with status: ${response.status}` };
+                }
+
+                const results = await response.json().catch(() => null);
+
+                if (!results) {
+                    return { error: 'Failed to parse geocoding response' };
+                }
+
+                return { data: results };
+            };
+
+            /**
+             * Validates geocoding results
+             * @param {GeocodingFetchResult} fetchResult - Fetch result from API
+             * @param {string} cityName - Original city name
+             * @returns {GeocodingValidationResult} Validation result
+             */
+            const validateResults = (fetchResult, cityName) => {
+                if ('error' in fetchResult) {
+                    return { error: fetchResult.error };
+                }
+
+                if (!fetchResult.data || fetchResult.data.length === 0) {
+                    return { error: `City "${cityName}" not found. Please try a different name or be more specific.` };
+                }
+                
+                return { data: fetchResult.data[0] };
+            };
+
+            /**
+             * Transforms geocoding result to coordinate data
+             * @param {GeocodingValidationResult} validationResult - Validation result
+             * @returns {GeocodingResult} Transformed coordinates
+             */
+            const transformLocationData = (validationResult) => {
+                if ('error' in validationResult) {
+                    return { error: validationResult.error };
+                }
+
+                const location = validationResult.data;
+                return {
+                    data: {
+                        latitude: parseFloat(location.lat),
+                        longitude: parseFloat(location.lon),
+                        displayName: location.display_name
+                    }
+                };
+            };
+
+            return {
+                name,
+                /**
+                 * Converts a city name to latitude and longitude coordinates
+                 * @param {string} cityName - Name of the city
+                 * @returns {Promise<GeocodingResult>} Coordinates or error
+                 */
+                geocode: async (cityName) => {
+                    const url = buildApiUrl(cityName);
+                    const fetchResult = await fetchAndParseResults(url);
+                    const validationResult = validateResults(fetchResult, cityName);
+                    return transformLocationData(validationResult);
+                }
+            };
+        };
 
         // ========================================
         // Business Logic - Weather Services
@@ -734,7 +869,7 @@
                     return { error: 'No data available for the selected date' };
                 }
                 
-                return { data: json.daily };
+                return { data: json.data.daily };
             };
 
             return {
@@ -887,12 +1022,12 @@
          * Creates a forecast form component
          * @param {HTMLFormElement} formElement - Form DOM element
          * @param {HTMLInputElement} dateInput - Date input element
-         * @param {HTMLInputElement} latitudeInput - Latitude input element
-         * @param {HTMLInputElement} longitudeInput - Longitude input element
+         * @param {HTMLInputElement} cityInput - City input element
          * @param {HTMLButtonElement} buttonElement - Submit button element
+         * @param {GeocodingService} geocodingService - Geocoding service instance
          * @returns {ForecastFormComponent} Forecast form component
          */
-        const createForecastFormComponent = (formElement, dateInput, latitudeInput, longitudeInput, buttonElement) => {
+        const createForecastFormComponent = (formElement, dateInput, cityInput, buttonElement, geocodingService) => {
 
             /**
              * Validates form values
@@ -900,19 +1035,14 @@
              */
             const validate = () => {
                 const date = dateInput.value;
-                const latitude = parseFloat(latitudeInput.value);
-                const longitude = parseFloat(longitudeInput.value);
+                const city = cityInput.value.trim();
 
                 if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
                     return { error: 'Invalid date format. Use YYYY-MM-DD.' };
                 }
 
-                if (typeof latitude !== 'number' || latitude < CONFIG.VALIDATION.LATITUDE_MIN || latitude > CONFIG.VALIDATION.LATITUDE_MAX) {
-                    return { error: `Latitude must be between ${CONFIG.VALIDATION.LATITUDE_MIN} and ${CONFIG.VALIDATION.LATITUDE_MAX}.` };
-                }
-
-                if (typeof longitude !== 'number' || longitude < CONFIG.VALIDATION.LONGITUDE_MIN || longitude > CONFIG.VALIDATION.LONGITUDE_MAX) {
-                    return { error: `Longitude must be between ${CONFIG.VALIDATION.LONGITUDE_MIN} and ${CONFIG.VALIDATION.LONGITUDE_MAX}.` };
+                if (!city || city === '') {
+                    return { error: 'City name cannot be empty.' };
                 }
 
                 return {};
@@ -920,22 +1050,32 @@
 
             return {
                 /**
-                 * Creates and validates forecast request
-                 * @returns {ForecastRequestResult} Request result with data or error
+                 * Creates and validates forecast request (async for geocoding)
+                 * @returns {Promise<ForecastRequestResult>} Request result with data or error
                  */
-                createRequest: () => {
+                createRequest: async () => {
                     const validation = validate();
                     if ('error' in validation) {
                         return { error: validation.error };
                     }
 
+                    // Geocode the city name to get coordinates
+                    const geocodeResult = await geocodingService.geocode(cityInput.value);
+                    
+                    if ('error' in geocodeResult) {
+                        return { error: geocodeResult.error };
+                    }
+
+                    const { latitude, longitude, displayName } = geocodeResult.data;
+
                     return {
                         data: {
                             date: dateInput.value,
                             coordinates: {
-                                latitude: parseFloat(latitudeInput.value),
-                                longitude: parseFloat(longitudeInput.value)
-                            }
+                                latitude,
+                                longitude
+                            },
+                            displayName
                         }
                     };
                 },
@@ -947,8 +1087,7 @@
                     const today = new Date().toISOString().split('T')[0];
                     dateInput.value = today;
 
-                    latitudeInput.value = CONFIG.DEFAULT_LOCATION.latitude.toString();
-                    longitudeInput.value = CONFIG.DEFAULT_LOCATION.longitude.toString();
+                    cityInput.value = CONFIG.DEFAULT_LOCATION.city;
                 },
                 /**
                  * Disables form submission
@@ -1023,8 +1162,9 @@
                  * @param {ForecastRequest} request - Forecast request with coordinates and date
                  * @returns {void}
                  */
-                displayInfo: ({ coordinates, date }) => {
-                    locationElement.textContent = CoordinateUtils.format(coordinates);
+                displayInfo: ({ coordinates, date, displayName }) => {
+                    const locationText = displayName || CoordinateUtils.format(coordinates);
+                    locationElement.textContent = locationText;
                     dateElement.textContent = formatDate(date);
                 },
                 /**
@@ -1051,12 +1191,12 @@
          */
         const createAppState = (components) => {
             /**
-             * Validates and creates forecast request
-             * @returns {ForecastRequest|null} Request data or null if validation fails
+             * Validates and creates forecast request (async for geocoding)
+             * @returns {Promise<ForecastRequest|null>} Request data or null if validation fails
              */
-            const validateRequest = () => {
+            const validateRequest = async () => {
                 const { forecastForm, statusMessage } = components;
-                const result = forecastForm.createRequest();
+                const result = await forecastForm.createRequest();
                 if ('error' in result) {
                     statusMessage.show(result.error, 'error');
                     return null;
@@ -1128,7 +1268,7 @@
                  * @returns {Promise<void>}
                  */
                 update: async () => {
-                    const request = validateRequest();
+                    const request = await validateRequest();
                     if (!request) return;
 
                     showLoadingState();
@@ -1146,12 +1286,14 @@
          * @returns {void}
          */
         const initializeApp = () => {
+            const geocodingService = createGeocodingService();
+
             const forecastForm = createForecastFormComponent(
                 document.getElementById('forecastForm'),
                 document.getElementById('dateInput'),
-                document.getElementById('latitudeInput'),
-                document.getElementById('longitudeInput'),
-                document.getElementById('submitButton')
+                document.getElementById('cityInput'),
+                document.getElementById('submitButton'),
+                geocodingService
             );
 
             const statusMessage = createStatusMessage(document.getElementById('statusMessage'));
