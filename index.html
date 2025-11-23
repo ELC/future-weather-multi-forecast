@@ -913,19 +913,17 @@
          * @property {ForecastHeader} forecastHeader - Forecast header object
          * @property {ForecastServices} forecastServices - Forecast services object
          * @property {SubmitButton} submitButton - Submit button object
+         * @property {WeatherService} weatherService - Weather service object
          * @property {() => void} setDefaultValues - Sets default values for all components
-         * @property {(weatherService: WeatherService) => void} registerWeatherService - Registers weather service
          * @property {() => Promise<void>} update - Updates forecast with registered weather service
          */
 
         /**
          * Creates application state object with UI components
-         * @param {Object} components - UI components
+         * @param {Object} components - UI components including weather service
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
-            let weatherService = null;
-
             return {
                 ...components,
                 setDefaultValues: () => {
@@ -933,21 +931,15 @@
                         .filter(component => component && typeof component.setDefaultValues === 'function')
                         .forEach(component => component.setDefaultValues());
                 },
-                registerWeatherService: (service) => {
-                    weatherService = service;
-                },
                 update: async () => {
-                    if (!weatherService) {
-                        throw new Error('Weather service not registered');
-                    }
-
                     const {
                         form,
                         statusMessage,
                         forecast,
                         forecastHeader,
                         forecastServices,
-                        submitButton
+                        submitButton,
+                        weatherService
                     } = components;
 
                     // Create and validate request
@@ -1009,15 +1001,6 @@
             const formElement = createFormElement(document.getElementById('forecastForm'));
             const submitButton = createSubmitButton(formElement);
 
-            const appState = createAppState({
-                form,
-                statusMessage,
-                forecast,
-                forecastHeader,
-                forecastServices,
-                submitButton
-            });
-
             const weatherService = createWeatherService([
                 createOpenMeteoService()
                 // Additional services can be added here:
@@ -1025,8 +1008,17 @@
                 // createOpenWeatherMapService(),
             ]);
 
+            const appState = createAppState({
+                form,
+                statusMessage,
+                forecast,
+                forecastHeader,
+                forecastServices,
+                submitButton,
+                weatherService
+            });
+
             appState.setDefaultValues();
-            appState.registerWeatherService(weatherService);
 
             // Register update callback with form
             formElement.onSubmit(appState.update);
