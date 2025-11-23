@@ -612,31 +612,29 @@
          * @returns {ForecastForm} Forecast form object with methods
          */
         const createForecastForm = (dateInput, latitudeInput, longitudeInput) => {
-            const validate = () => {
-                const date = dateInput.value;
-                const latitude = parseFloat(latitudeInput.value);
-                const longitude = parseFloat(longitudeInput.value);
-
-                if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                    return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
-                }
-
-                if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-                    return { valid: false, error: 'Latitude must be between -90 and 90.' };
-                }
-
-                if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-                    return { valid: false, error: 'Longitude must be between -180 and 180.' };
-                }
-
-                return { valid: true, error: null };
-            };
-
             return {
-                validate,
-                createRequest: () => {
+                validate: () => {
+                    const date = dateInput.value;
+                    const latitude = parseFloat(latitudeInput.value);
+                    const longitude = parseFloat(longitudeInput.value);
+
+                    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                        return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+                    }
+
+                    if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+                        return { valid: false, error: 'Latitude must be between -90 and 90.' };
+                    }
+
+                    if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+                        return { valid: false, error: 'Longitude must be between -180 and 180.' };
+                    }
+
+                    return { valid: true, error: null };
+                },
+                createRequest: function() {
                     // Validate inputs first
-                    const validation = validate();
+                    const validation = this.validate();
                     if (!validation.valid) {
                         return { success: false, error: validation.error };
                     }
