@@ -599,8 +599,7 @@
 
         /**
          * @typedef {Object} ForecastForm
-         * @property {() => ForecastRequest} createRequest - Creates forecast request from form values
-         * @property {() => {valid: boolean, error: string|null}} validate - Validates form values
+         * @property {() => {success: boolean, data?: ForecastRequest, error?: string}} createRequest - Creates and validates forecast request
          * @property {() => void} setDefaultValues - Sets default form values
          */
 
@@ -614,32 +613,34 @@
         const createForecastForm = (dateInput, latitudeInput, longitudeInput) => {
             return {
                 createRequest: () => {
-                    return {
-                        date: dateInput.value,
-                        coordinates: {
-                            latitude: parseFloat(latitudeInput.value),
-                            longitude: parseFloat(longitudeInput.value)
-                        }
-                    };
-                },
-                validate: () => {
                     const date = dateInput.value;
                     const latitude = parseFloat(latitudeInput.value);
                     const longitude = parseFloat(longitudeInput.value);
 
+                    // Validate inputs
                     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                        return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+                        return { success: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
                     }
 
                     if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-                        return { valid: false, error: 'Latitude must be between -90 and 90.' };
+                        return { success: false, error: 'Latitude must be between -90 and 90.' };
                     }
 
                     if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-                        return { valid: false, error: 'Longitude must be between -180 and 180.' };
+                        return { success: false, error: 'Longitude must be between -180 and 180.' };
                     }
 
-                    return { valid: true, error: null };
+                    // Return successful result with request data
+                    return {
+                        success: true,
+                        data: {
+                            date,
+                            coordinates: {
+                                latitude,
+                                longitude
+                            }
+                        }
+                    };
                 },
                 setDefaultValues: () => {
                     // Set default date to today
@@ -876,15 +877,14 @@
                     submitButton
                 } = appState;
 
-                // Validate form
-                const validation = form.validate();
-                if (!validation.valid) {
-                    statusMessage.show(validation.error, 'error');
+                // Create and validate request
+                const result = form.createRequest();
+                if (!result.success) {
+                    statusMessage.show(result.error, 'error');
                     return;
                 }
 
-                // Create request object
-                const request = form.createRequest();
+                const request = result.data;
 
                 // Show loading state
                 submitButton.disable();
