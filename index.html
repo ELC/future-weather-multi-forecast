@@ -985,6 +985,21 @@
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
+            const { form, statusMessage } = components;
+
+            /**
+             * Validates and creates forecast request
+             * @returns {ForecastRequest|null} Request data or null if validation fails
+             */
+            const validateRequest = () => {
+                const result = form.createRequest();
+                if ('error' in result) {
+                    statusMessage.show(result.error, 'error');
+                    return null;
+                }
+                return result.data;
+            };
+
             return {
                 ...components,
                 /**
@@ -1002,7 +1017,6 @@
                  */
                 update: async () => {
                     const {
-                        form,
                         statusMessage,
                         forecast,
                         forecastHeader,
@@ -1011,13 +1025,8 @@
                         weatherService
                     } = components;
 
-                    const result = form.createRequest();
-                    if ('error' in result) {
-                        statusMessage.show(result.error, 'error');
-                        return;
-                    }
-
-                    const request = result.data;
+                    const request = validateRequest();
+                    if (!request) return;
 
                     submitButton.disable();
                     statusMessage.show('Fetching forecast data...', 'loading');
