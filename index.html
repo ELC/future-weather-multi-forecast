@@ -479,14 +479,6 @@
             return {
                 name: 'Open-Meteo',
                 /**
-                 * Maps WMO weather codes to descriptions
-                 * @param {number} code - WMO weather code
-                 * @returns {string} Weather description
-                 */
-                getWeatherDescription: (code) => {
-                    return WMO_WEATHER_DESCRIPTIONS[code] || 'Unknown';
-                },
-                /**
                  * Maps WMO weather codes to icons
                  * @param {number} code - WMO weather code
                  * @returns {string} Weather icon
@@ -496,10 +488,10 @@
                     return iconMapping ? iconMapping.icon : '❓';
                 },
                 /**
-                 * Creates empty weather data object
-                 * @returns {WeatherData} Empty weather data
+                 * Empty weather data object
+                 * @type {WeatherData}
                  */
-                createEmptyWeatherData: () => ({
+                emptyWeatherData: {
                     temperature: 0,
                     temperatureFahrenheit: 0,
                     description: 'N/A',
@@ -507,7 +499,7 @@
                     windSpeed: 0,
                     precipitation: 0,
                     icon: '❓'
-                }),
+                },
                 /**
                  * Transforms Open-Meteo API response to WeatherData
                  * @param {Object} daily - Daily weather data from API
@@ -522,11 +514,98 @@
                     return {
                         temperature: Math.round(avgTemp * 10) / 10,
                         temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
-                        description: this.getWeatherDescription(weatherCode),
+                        description: WMO_WEATHER_DESCRIPTIONS[code] || 'Unknown',
                         humidity: 0, // Not available in daily forecast
                         windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
                         precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
                         icon: this.getWeatherIcon(weatherCode)
+                    };
+                },
+                /**
+                 * Builds API URL for weather request
+                 * @param {string} date - Date string
+                 * @param {number} latitude - Latitude coordinate
+                 * @param {number} longitude - Longitude coordinate
+                 * @returns {string} API URL
+                 */
+                buildApiUrl: (date, latitude, longitude) => {
+                    const url = new URL('https://api.open-meteo.com/v1/forecast');
+                    url.searchParams.append('latitude', latitude.toString());
+                    url.searchParams.append('longitude', longitude.toString());
+                    url.searchParams.append('daily', 'temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum,windspeed_10m_max');
+                    url.searchParams.append('timezone', 'auto');
+                    url.searchParams.append('start_date', date);
+                    url.searchParams.append('end_date', date);
+                    return url.toString();
+                },
+                /**
+                 * Fetches data from API
+                 * @param {string} url - API URL
+                 * @returns {Promise<{ok: boolean, value?: Response, error?: string}>} Fetch result
+                 */
+                fetchFromApi: async (url) => {
+                    const response = await fetch(url).catch(error => null);
+                    
+                    if (!response) {
+                        return { ok: false, error: 'Network error occurred' };
+                    }
+                    
+                    if (!response.ok) {
+                        return { ok: false, error: `HTTP error! status: ${response.status}` };
+                    }
+                    
+                    return { ok: true, value: response };
+                },
+                /**
+                 * Parses JSON response
+                 * @param {Response} response - Fetch response
+                 * @returns {Promise<{ok: boolean, value?: any, error?: string}>} Parse result
+                 */
+                parseResponse: async (response) => {
+                    const json = await response.json().catch(() => null);
+                    
+                    if (!json) {
+                        return { ok: false, error: 'Failed to parse response' };
+                    }
+                    
+                    return { ok: true, value: json };
+                },
+                /**
+                 * Validates API response data
+                 * @param {any} json - Parsed JSON
+                 * @returns {{ok: boolean, value?: any, error?: string}} Validation result
+                 */
+                validateResponseData: (json) => {
+                    if (!json.daily || !json.daily.time || json.daily.time.length === 0) {
+                        return { ok: false, error: 'No data available for the selected date' };
+                    }
+                    
+                    return { ok: true, value: json.daily };
+                },
+                /**
+                 * Creates success result
+                 * @param {WeatherData} data - Weather data
+                 * @returns {ForecastResult} Success result
+                 */
+                createSuccessResult: function(data) {
+                    return {
+                        serviceName: this.name,
+                        data,
+                        success: true,
+                        error: null
+                    };
+                },
+                /**
+                 * Creates error result
+                 * @param {string} error - Error message
+                 * @returns {ForecastResult} Error result
+                 */
+                createErrorResult: function(error) {
+                    return {
+                        serviceName: this.name,
+                        data: this.emptyWeatherData,
+                        success: false,
+                        error
                     };
                 },
                 /**
@@ -535,43 +614,25 @@
                  * @returns {Promise<ForecastResult>} Forecast result
                  */
                 fetchForecast: async function({ date, coordinates: { latitude, longitude } }) {
-                    try {
-                        const url = new URL('https://api.open-meteo.com/v1/forecast');
-                        url.searchParams.append('latitude', latitude.toString());
-                        url.searchParams.append('longitude', longitude.toString());
-                        url.searchParams.append('daily', 'temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum,windspeed_10m_max');
-                        url.searchParams.append('timezone', 'auto');
-                        url.searchParams.append('start_date', date);
-                        url.searchParams.append('end_date', date);
-
-                        const response = await fetch(url.toString());
-                        
-                        if (!response.ok) {
-                            throw new Error(`HTTP error! status: ${response.status}`);
-                        }
-
-                        const json = await response.json();
-                        
-                        if (!json.daily || !json.daily.time || json.daily.time.length === 0) {
-                            throw new Error('No data available for the selected date');
-                        }
-
-                        const data = this.transformOpenMeteoData(json.daily);
-                        
-                        return {
-                            serviceName: this.name,
-                            data,
-                            success: true,
-                            error: null
-                        };
-                    } catch (error) {
-                        return {
-                            serviceName: this.name,
-                            data: this.createEmptyWeatherData(),
-                            success: false,
-                            error: error.message
-                        };
+                    const url = this.buildApiUrl(date, latitude, longitude);
+                    
+                    const fetchResult = await this.fetchFromApi(url);
+                    if (!fetchResult.ok) {
+                        return this.createErrorResult(fetchResult.error);
                     }
+                    
+                    const parseResult = await this.parseResponse(fetchResult.value);
+                    if (!parseResult.ok) {
+                        return this.createErrorResult(parseResult.error);
+                    }
+                    
+                    const validationResult = this.validateResponseData(parseResult.value);
+                    if (!validationResult.ok) {
+                        return this.createErrorResult(validationResult.error);
+                    }
+                    
+                    const data = this.transformOpenMeteoData(validationResult.value);
+                    return this.createSuccessResult(data);
                 }
             };
         };
