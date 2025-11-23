@@ -883,7 +883,7 @@
         /**
          * @typedef {Object} FormElement
          * @property {HTMLButtonElement} button - Form submit button element
-         * @property {(appState: AppState, weatherService: WeatherService) => void} registerWeatherService - Registers weather service and sets up form submission
+         * @property {(appState: AppState) => void} registerAppState - Registers app state and sets up form submission
          */
 
         /**
@@ -894,10 +894,10 @@
         const createFormElement = (element) => {
             return {
                 button: element.querySelector('.forecast-form__button'),
-                registerWeatherService: (appState, weatherService) => {
+                registerAppState: (appState) => {
                     const handleSubmit = async (event) => {
                         event.preventDefault();
-                        await appState.update(weatherService);
+                        await appState.update();
                     };
 
                     element.addEventListener('submit', handleSubmit);
@@ -914,7 +914,8 @@
          * @property {ForecastServices} forecastServices - Forecast services object
          * @property {SubmitButton} submitButton - Submit button object
          * @property {() => void} setDefaultValues - Sets default values for all components
-         * @property {(weatherService: WeatherService) => Promise<void>} update - Updates forecast with weather service
+         * @property {(weatherService: WeatherService) => void} registerWeatherService - Registers weather service
+         * @property {() => Promise<void>} update - Updates forecast with registered weather service
          */
 
         /**
@@ -923,6 +924,8 @@
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
+            let weatherService = null;
+
             return {
                 ...components,
                 setDefaultValues: () => {
@@ -930,7 +933,14 @@
                         .filter(component => component && typeof component.setDefaultValues === 'function')
                         .forEach(component => component.setDefaultValues());
                 },
-                update: async function(weatherService) {
+                registerWeatherService: (service) => {
+                    weatherService = service;
+                },
+                update: async function() {
+                    if (!weatherService) {
+                        throw new Error('Weather service not registered');
+                    }
+
                     const {
                         form,
                         statusMessage,
@@ -1016,9 +1026,10 @@
             ]);
 
             appState.setDefaultValues();
+            appState.registerWeatherService(weatherService);
 
-            // Register weather service with form
-            formElement.registerWeatherService(appState, weatherService);
+            // Register app state with form
+            formElement.registerAppState(appState);
         };
 
         // Initialize app when DOM is ready
