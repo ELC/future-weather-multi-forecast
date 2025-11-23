@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weather Forecast Dashboard</title>
+    <style>
+        /* ========================================
+           CSS - BEM Methodology
+           ======================================== */
+        
+        :root {
+            --color-primary: #4a90e2;
+            --color-secondary: #50c878;
+            --color-background: #f5f7fa;
+            --color-surface: #ffffff;
+            --color-text: #333333;
+            --color-text-light: #666666;
+            --color-error: #e74c3c;
+            --color-border: #e0e0e0;
+            --spacing-xs: 0.5rem;
+            --spacing-sm: 1rem;
+            --spacing-md: 1.5rem;
+            --spacing-lg: 2rem;
+            --border-radius: 8px;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: var(--color-background);
+            color: var(--color-text);
+            line-height: 1.6;
+        }
+
+        /* Dashboard Block */
+        .dashboard {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: var(--spacing-lg);
+        }
+
+        .dashboard__header {
+            text-align: center;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .dashboard__title {
+            font-size: 2.5rem;
+            color: var(--color-primary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .dashboard__subtitle {
+            color: var(--color-text-light);
+            font-size: 1rem;
+        }
+
+        /* Form Block */
+        .forecast-form {
+            background: var(--color-surface);
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .forecast-form__group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: var(--spacing-sm);
+            align-items: flex-end;
+        }
+
+        .forecast-form__field {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .forecast-form__label {
+            display: block;
+            margin-bottom: var(--spacing-xs);
+            font-weight: 500;
+            color: var(--color-text);
+        }
+
+        .forecast-form__input {
+            width: 100%;
+            padding: var(--spacing-sm);
+            border: 1px solid var(--color-border);
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .forecast-form__input:focus {
+            outline: none;
+            border-color: var(--color-primary);
+        }
+
+        .forecast-form__button {
+            padding: var(--spacing-sm) var(--spacing-lg);
+            background-color: var(--color-primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        .forecast-form__button:hover {
+            background-color: #3a7bc8;
+        }
+
+        .forecast-form__button:active {
+            transform: scale(0.98);
+        }
+
+        .forecast-form__button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        /* Status Block */
+        .status {
+            margin-bottom: var(--spacing-md);
+            padding: var(--spacing-sm);
+            border-radius: var(--border-radius);
+            text-align: center;
+        }
+
+        .status--loading {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status--error {
+            background-color: #f8d7da;
+            color: var(--color-error);
+        }
+
+        .status--hidden {
+            display: none;
+        }
+
+        /* Forecast Block */
+        .forecast {
+            background: var(--color-surface);
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+
+        .forecast--hidden {
+            display: none;
+        }
+
+        .forecast__header {
+            margin-bottom: var(--spacing-md);
+            padding-bottom: var(--spacing-sm);
+            border-bottom: 2px solid var(--color-border);
+        }
+
+        .forecast__location {
+            font-size: 1.5rem;
+            color: var(--color-text);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .forecast__date {
+            color: var(--color-text-light);
+            font-size: 0.9rem;
+        }
+
+        .forecast__services {
+            display: grid;
+            gap: var(--spacing-md);
+        }
+
+        /* Weather Card Block */
+        .weather-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: var(--spacing-md);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+        }
+
+        .weather-card__header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .weather-card__service {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            font-weight: 500;
+        }
+
+        .weather-card__status {
+            font-size: 0.85rem;
+            padding: 0.25rem 0.5rem;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        .weather-card__main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .weather-card__temperature {
+            font-size: 3rem;
+            font-weight: 300;
+        }
+
+        .weather-card__condition {
+            text-align: right;
+        }
+
+        .weather-card__description {
+            font-size: 1.2rem;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .weather-card__icon {
+            font-size: 2rem;
+        }
+
+        .weather-card__details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: var(--spacing-sm);
+            padding-top: var(--spacing-sm);
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .weather-card__detail {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .weather-card__detail-label {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin-bottom: 0.25rem;
+        }
+
+        .weather-card__detail-value {
+            font-size: 1.1rem;
+            font-weight: 500;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .dashboard {
+                padding: var(--spacing-sm);
+            }
+
+            .dashboard__title {
+                font-size: 2rem;
+            }
+
+            .forecast-form__group {
+                flex-direction: column;
+            }
+
+            .forecast-form__field {
+                width: 100%;
+            }
+
+            .weather-card__main {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .weather-card__condition {
+                text-align: center;
+                margin-top: var(--spacing-sm);
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Main Dashboard -->
+    <main class="dashboard">
+        <!-- Dashboard Header -->
+        <header class="dashboard__header">
+            <h1 class="dashboard__title">Weather Forecast Dashboard</h1>
+            <p class="dashboard__subtitle">Get weather forecasts from multiple sources</p>
+        </header>
+
+        <!-- Forecast Form -->
+        <section class="forecast-form">
+            <form class="forecast-form__group" id="forecastForm">
+                <div class="forecast-form__field">
+                    <label for="dateInput" class="forecast-form__label">Select Date</label>
+                    <input 
+                        type="date" 
+                        id="dateInput" 
+                        class="forecast-form__input" 
+                        required
+                    >
+                </div>
+                <div class="forecast-form__field">
+                    <label for="latitudeInput" class="forecast-form__label">Latitude</label>
+                    <input 
+                        type="number" 
+                        id="latitudeInput" 
+                        class="forecast-form__input" 
+                        placeholder="e.g., 40.7128"
+                        step="0.0001"
+                        min="-90"
+                        max="90"
+                        required
+                    >
+                </div>
+                <div class="forecast-form__field">
+                    <label for="longitudeInput" class="forecast-form__label">Longitude</label>
+                    <input 
+                        type="number" 
+                        id="longitudeInput" 
+                        class="forecast-form__input" 
+                        placeholder="e.g., -74.0060"
+                        step="0.0001"
+                        min="-180"
+                        max="180"
+                        required
+                    >
+                </div>
+                <button type="submit" class="forecast-form__button">Get Forecast</button>
+            </form>
+        </section>
+
+        <!-- Status Messages -->
+        <aside class="status status--hidden" id="statusMessage" role="status" aria-live="polite"></aside>
+
+        <!-- Forecast Results -->
+        <section class="forecast forecast--hidden" id="forecastResults">
+            <header class="forecast__header">
+                <h2 class="forecast__location" id="forecastLocation">Location</h2>
+                <p class="forecast__date" id="forecastDate">Date</p>
+            </header>
+            <div class="forecast__services" id="forecastServices">
+                <!-- Weather cards will be inserted here -->
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // ========================================
+        // Type Definitions
+        // ========================================
+
+        /**
+         * @typedef {Object} Coordinates
+         * @property {number} latitude - Latitude coordinate
+         * @property {number} longitude - Longitude coordinate
+         */
+
+        /**
+         * @typedef {Object} ForecastRequest
+         * @property {string} date - ISO date string (YYYY-MM-DD)
+         * @property {Coordinates} coordinates - Location coordinates
+         */
+
+        /**
+         * @typedef {Object} WeatherData
+         * @property {number} temperature - Temperature in Celsius
+         * @property {number} temperatureFahrenheit - Temperature in Fahrenheit
+         * @property {string} description - Weather condition description
+         * @property {number} humidity - Humidity percentage
+         * @property {number} windSpeed - Wind speed in km/h
+         * @property {number} precipitation - Precipitation in mm
+         * @property {string} icon - Weather icon representation
+         */
+
+        /**
+         * @typedef {Object} ForecastResult
+         * @property {string} serviceName - Name of the weather service
+         * @property {WeatherData} data - Weather data
+         * @property {boolean} success - Whether the fetch was successful
+         * @property {string|null} error - Error message if failed
+         */
+
+        /**
+         * @typedef {Object} WeatherService
+         * @property {string} name - Name of the weather service
+         * @property {(request: ForecastRequest) => Promise<ForecastResult>} fetchForecast - Function to fetch forecast
+         */
+
+        // ========================================
+        // Business Logic - Weather Services
+        // ========================================
+
+        /**
+         * Creates a weather service for Open-Meteo API
+         * @returns {WeatherService} Weather service implementation
+         */
+        const createOpenMeteoService = () => {
+            const name = 'Open-Meteo';
+
+            /**
+             * Fetches forecast from Open-Meteo API
+             * @param {ForecastRequest} request - Forecast request parameters
+             * @returns {Promise<ForecastResult>} Forecast result
+             */
+            const fetchForecast = async (request) => {
+                try {
+                    const { date, coordinates } = request;
+                    const { latitude, longitude } = coordinates;
+                    
+                    const url = new URL('https://api.open-meteo.com/v1/forecast');
+                    url.searchParams.append('latitude', latitude.toString());
+                    url.searchParams.append('longitude', longitude.toString());
+                    url.searchParams.append('daily', 'temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum,windspeed_10m_max');
+                    url.searchParams.append('timezone', 'auto');
+                    url.searchParams.append('start_date', date);
+                    url.searchParams.append('end_date', date);
+
+                    const response = await fetch(url.toString());
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+
+                    const json = await response.json();
+                    
+                    if (!json.daily || !json.daily.time || json.daily.time.length === 0) {
+                        throw new Error('No data available for the selected date');
+                    }
+
+                    const data = transformOpenMeteoData(json.daily);
+                    
+                    return {
+                        serviceName: name,
+                        data,
+                        success: true,
+                        error: null
+                    };
+                } catch (error) {
+                    return {
+                        serviceName: name,
+                        data: createEmptyWeatherData(),
+                        success: false,
+                        error: error.message
+                    };
+                }
+            };
+
+            return { name, fetchForecast };
+        };
+
+        /**
+         * Transforms Open-Meteo API response to WeatherData
+         * @param {Object} daily - Daily weather data from API
+         * @returns {WeatherData} Transformed weather data
+         */
+        const transformOpenMeteoData = (daily) => {
+            const tempMax = daily.temperature_2m_max[0];
+            const tempMin = daily.temperature_2m_min[0];
+            const avgTemp = (tempMax + tempMin) / 2;
+            const weatherCode = daily.weathercode[0];
+            
+            return {
+                temperature: Math.round(avgTemp * 10) / 10,
+                temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
+                description: getWeatherDescription(weatherCode),
+                humidity: 0, // Not available in daily forecast
+                windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
+                precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
+                icon: getWeatherIcon(weatherCode)
+            };
+        };
+
+        /**
+         * Maps WMO weather codes to descriptions
+         * @param {number} code - WMO weather code
+         * @returns {string} Weather description
+         */
+        const getWeatherDescription = (code) => {
+            const descriptions = {
+                0: 'Clear sky',
+                1: 'Mainly clear',
+                2: 'Partly cloudy',
+                3: 'Overcast',
+                45: 'Foggy',
+                48: 'Depositing rime fog',
+                51: 'Light drizzle',
+                53: 'Moderate drizzle',
+                55: 'Dense drizzle',
+                61: 'Slight rain',
+                63: 'Moderate rain',
+                65: 'Heavy rain',
+                71: 'Slight snow',
+                73: 'Moderate snow',
+                75: 'Heavy snow',
+                77: 'Snow grains',
+                80: 'Slight rain showers',
+                81: 'Moderate rain showers',
+                82: 'Violent rain showers',
+                85: 'Slight snow showers',
+                86: 'Heavy snow showers',
+                95: 'Thunderstorm',
+                96: 'Thunderstorm with slight hail',
+                99: 'Thunderstorm with heavy hail'
+            };
+            return descriptions[code] || 'Unknown';
+        };
+
+        /**
+         * Maps WMO weather codes to icons
+         * @param {number} code - WMO weather code
+         * @returns {string} Weather icon
+         */
+        const getWeatherIcon = (code) => {
+            if (code === 0) return '☀️';
+            if (code <= 3) return '⛅';
+            if (code <= 48) return '🌫️';
+            if (code <= 55) return '🌦️';
+            if (code <= 65) return '🌧️';
+            if (code <= 77) return '❄️';
+            if (code <= 82) return '🌧️';
+            if (code <= 86) return '🌨️';
+            return '⛈️';
+        };
+
+        /**
+         * Creates empty weather data object
+         * @returns {WeatherData} Empty weather data
+         */
+        const createEmptyWeatherData = () => ({
+            temperature: 0,
+            temperatureFahrenheit: 0,
+            description: 'N/A',
+            humidity: 0,
+            windSpeed: 0,
+            precipitation: 0,
+            icon: '❓'
+        });
+
+        // ========================================
+        // Business Logic - Forecast Aggregator
+        // ========================================
+
+        /**
+         * Fetches forecasts from all available weather services
+         * @param {ForecastRequest} request - Forecast request parameters
+         * @param {Array<WeatherService>} services - Array of weather services
+         * @returns {Promise<Array<ForecastResult>>} Array of forecast results
+         */
+        const fetchAllForecasts = async (request, services) => {
+            const promises = services.map(service => service.fetchForecast(request));
+            return await Promise.all(promises);
+        };
+
+        /**
+         * Validates forecast request data
+         * @param {ForecastRequest} request - Forecast request to validate
+         * @returns {{valid: boolean, error: string|null}} Validation result
+         */
+        const validateForecastRequest = (request) => {
+            const { date, coordinates } = request;
+            const { latitude, longitude } = coordinates;
+
+            if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+            }
+
+            if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+                return { valid: false, error: 'Latitude must be between -90 and 90.' };
+            }
+
+            if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+                return { valid: false, error: 'Longitude must be between -180 and 180.' };
+            }
+
+            return { valid: true, error: null };
+        };
+
+        // ========================================
+        // View Layer - DOM Manipulation
+        // ========================================
+
+        /**
+         * Shows status message
+         * @param {HTMLElement} element - Status message element
+         * @param {string} message - Message to display
+         * @param {'loading'|'error'} type - Status type
+         * @returns {void}
+         */
+        const showStatus = (element, message, type) => {
+            element.textContent = message;
+            element.className = `status status--${type}`;
+        };
+
+        /**
+         * Hides status message
+         * @param {HTMLElement} element - Status message element
+         * @returns {void}
+         */
+        const hideStatus = (element) => {
+            element.className = 'status status--hidden';
+        };
+
+        /**
+         * Shows forecast section
+         * @param {HTMLElement} element - Forecast section element
+         * @returns {void}
+         */
+        const showForecast = (element) => {
+            element.classList.remove('forecast--hidden');
+        };
+
+        /**
+         * Hides forecast section
+         * @param {HTMLElement} element - Forecast section element
+         * @returns {void}
+         */
+        const hideForecast = (element) => {
+            element.classList.add('forecast--hidden');
+        };
+
+        /**
+         * Updates forecast header
+         * @param {Object} params - Parameters
+         * @param {HTMLElement} params.locationElement - Location element
+         * @param {HTMLElement} params.dateElement - Date element
+         * @param {Coordinates} params.coordinates - Location coordinates
+         * @param {string} params.date - Forecast date
+         * @returns {void}
+         */
+        const updateForecastHeader = ({ locationElement, dateElement, coordinates, date }) => {
+            locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
+            dateElement.textContent = new Date(date).toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        };
+
+        /**
+         * Creates a weather card element
+         * @param {ForecastResult} result - Forecast result
+         * @returns {HTMLElement} Weather card element
+         */
+        const createWeatherCard = (result) => {
+            const article = document.createElement('article');
+            article.className = 'weather-card';
+
+            const { serviceName, data, success, error } = result;
+            const status = success ? 'Active' : 'Error';
+
+            article.innerHTML = `
+                <header class="weather-card__header">
+                    <h3 class="weather-card__service">${serviceName}</h3>
+                    <span class="weather-card__status">${status}</span>
+                </header>
+                ${success ? `
+                    <div class="weather-card__main">
+                        <div class="weather-card__temperature">${data.temperature}°C</div>
+                        <div class="weather-card__condition">
+                            <div class="weather-card__description">${data.description}</div>
+                            <div class="weather-card__icon">${data.icon}</div>
+                        </div>
+                    </div>
+                    <div class="weather-card__details">
+                        <div class="weather-card__detail">
+                            <span class="weather-card__detail-label">Fahrenheit</span>
+                            <span class="weather-card__detail-value">${data.temperatureFahrenheit}°F</span>
+                        </div>
+                        <div class="weather-card__detail">
+                            <span class="weather-card__detail-label">Wind Speed</span>
+                            <span class="weather-card__detail-value">${data.windSpeed} km/h</span>
+                        </div>
+                        <div class="weather-card__detail">
+                            <span class="weather-card__detail-label">Precipitation</span>
+                            <span class="weather-card__detail-value">${data.precipitation} mm</span>
+                        </div>
+                    </div>
+                ` : `
+                    <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
+                `}
+            `;
+
+            return article;
+        };
+
+        /**
+         * Renders forecast results
+         * @param {HTMLElement} container - Container element
+         * @param {Array<ForecastResult>} results - Array of forecast results
+         * @returns {void}
+         */
+        const renderForecastResults = (container, results) => {
+            // Clear existing content
+            container.innerHTML = '';
+            
+            // Create and append weather cards
+            results.forEach(result => {
+                const card = createWeatherCard(result);
+                container.appendChild(card);
+            });
+        };
+
+        /**
+         * Enables form button
+         * @param {HTMLButtonElement} button - Form submit button
+         * @returns {void}
+         */
+        const enableFormButton = (button) => {
+            button.disabled = false;
+        };
+
+        /**
+         * Disables form button
+         * @param {HTMLButtonElement} button - Form submit button
+         * @returns {void}
+         */
+        const disableFormButton = (button) => {
+            button.disabled = true;
+        };
+
+        // ========================================
+        // Application Controller
+        // ========================================
+
+        /**
+         * Initializes the weather forecast application
+         * @returns {void}
+         */
+        const initializeApp = () => {
+            // Get DOM elements
+            const form = document.getElementById('forecastForm');
+            const dateInput = document.getElementById('dateInput');
+            const latitudeInput = document.getElementById('latitudeInput');
+            const longitudeInput = document.getElementById('longitudeInput');
+            const statusMessage = document.getElementById('statusMessage');
+            const forecastResults = document.getElementById('forecastResults');
+            const forecastLocation = document.getElementById('forecastLocation');
+            const forecastDate = document.getElementById('forecastDate');
+            const forecastServices = document.getElementById('forecastServices');
+            const submitButton = form.querySelector('.forecast-form__button');
+
+            // Initialize weather services
+            const weatherServices = [
+                createOpenMeteoService()
+                // Additional services can be added here:
+                // createWeatherAPIService(),
+                // createOpenWeatherMapService(),
+            ];
+
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+
+            // Set default coordinates (New York City)
+            latitudeInput.value = '40.7128';
+            longitudeInput.value = '-74.0060';
+
+            /**
+             * Handles form submission
+             * @param {Event} event - Form submit event
+             * @returns {Promise<void>}
+             */
+            const handleFormSubmit = async (event) => {
+                event.preventDefault();
+
+                // Create request object
+                const request = {
+                    date: dateInput.value,
+                    coordinates: {
+                        latitude: parseFloat(latitudeInput.value),
+                        longitude: parseFloat(longitudeInput.value)
+                    }
+                };
+
+                // Validate request
+                const validation = validateForecastRequest(request);
+                if (!validation.valid) {
+                    showStatus(statusMessage, validation.error, 'error');
+                    return;
+                }
+
+                // Show loading state
+                disableFormButton(submitButton);
+                showStatus(statusMessage, 'Fetching forecast data...', 'loading');
+                hideForecast(forecastResults);
+
+                try {
+                    // Fetch forecasts from all services
+                    const results = await fetchAllForecasts(request, weatherServices);
+
+                    // Hide loading status
+                    hideStatus(statusMessage);
+
+                    // Update forecast header
+                    updateForecastHeader({
+                        locationElement: forecastLocation,
+                        dateElement: forecastDate,
+                        coordinates: request.coordinates,
+                        date: request.date
+                    });
+
+                    // Render results
+                    renderForecastResults(forecastServices, results);
+
+                    // Show forecast section
+                    showForecast(forecastResults);
+
+                } catch (error) {
+                    showStatus(statusMessage, `Failed to fetch forecast: ${error.message}`, 'error');
+                } finally {
+                    enableFormButton(submitButton);
+                }
+            };
+
+            // Attach event listener
+            form.addEventListener('submit', handleFormSubmit);
+        };
+
+        // Initialize app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+    </script>
+</body>
+</html>
+
