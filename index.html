@@ -495,20 +495,6 @@
             const name = 'Open-Meteo';
 
             /**
-             * Empty weather data object
-             * @type {WeatherData}
-             */
-            const emptyWeatherData = {
-                temperature: 0,
-                temperatureFahrenheit: 0,
-                description: 'N/A',
-                humidity: 0,
-                windSpeed: 0,
-                precipitation: 0,
-                icon: '❓'
-            };
-
-            /**
              * Maps WMO weather codes to icons
              * @param {number} code - WMO weather code
              * @returns {string} Weather icon
@@ -519,24 +505,35 @@
             };
 
             /**
-             * Transforms Open-Meteo API response to WeatherData
-             * @param {OpenMeteoDailyData} daily - Daily weather data from API
-             * @returns {WeatherData} Transformed weather data
+             * Transforms validation result to ForecastResult
+             * @param {{data: OpenMeteoDailyData} | {error: string}} validationResult - Validation result from API response
+             * @returns {ForecastResult} Complete forecast result with service name
              */
-            const transformOpenMeteoData = (daily) => {
+            const transformOpenMeteoData = (validationResult) => {
+                if ('error' in validationResult) {
+                    return {
+                        serviceName: name,
+                        error: validationResult.error
+                    };
+                }
+                
+                const daily = validationResult.data;
                 const tempMax = daily.temperature_2m_max[0];
                 const tempMin = daily.temperature_2m_min[0];
                 const avgTemp = (tempMax + tempMin) / 2;
                 const weatherCode = daily.weathercode[0];
                 
                 return {
-                    temperature: Math.round(avgTemp * 10) / 10,
-                    temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
-                    description: WMO_WEATHER_DESCRIPTIONS[weatherCode] || 'Unknown',
-                    humidity: 0,
-                    windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
-                    precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
-                    icon: getWeatherIcon(weatherCode)
+                    serviceName: name,
+                    data: {
+                        temperature: Math.round(avgTemp * 10) / 10,
+                        temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
+                        description: WMO_WEATHER_DESCRIPTIONS[weatherCode] || 'Unknown',
+                        humidity: 0,
+                        windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
+                        precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
+                        icon: getWeatherIcon(weatherCode)
+                    }
                 };
             };
 
@@ -589,6 +586,10 @@
              * @returns {{data: OpenMeteoDailyData} | {error: string}} Validation result
              */
             const validateResponseData = (json) => {
+                if (json.error) {
+                    return { error: json.error };
+                }
+                
                 if (!json.daily || !json.daily.time || json.daily.time.length === 0) {
                     return { error: 'No data available for the selected date' };
                 }
@@ -605,28 +606,9 @@
                  */
                 fetchForecast: async ({ date, coordinates: { latitude, longitude } }) => {
                     const url = buildApiUrl(date, latitude, longitude);
-                    
                     const jsonResult = await fetchAndParseJson(url);
-                    if ('error' in jsonResult) {
-                        return {
-                            serviceName: name,
-                            error: jsonResult.error
-                        };
-                    }
-                    
-                    const validationResult = validateResponseData(jsonResult.data);
-                    if ('error' in validationResult) {
-                        return {
-                            serviceName: name,
-                            error: validationResult.error
-                        };
-                    }
-                    
-                    const weatherData = transformOpenMeteoData(validationResult.data);
-                    return {
-                        serviceName: name,
-                        data: weatherData
-                    };
+                    const validationResult = validateResponseData(jsonResult);
+                    return transformOpenMeteoData(validationResult);
                 }
             };
         };
