@@ -598,25 +598,59 @@
         };
 
         /**
-         * Validates forecast request data
-         * @param {ForecastRequest} request - Forecast request to validate
-         * @returns {{valid: boolean, error: string|null}} Validation result
+         * @typedef {Object} ForecastForm
+         * @property {() => ForecastRequest} createRequest - Creates forecast request from form values
+         * @property {() => {valid: boolean, error: string|null}} validate - Validates form values
+         * @property {() => void} setDefaultValues - Sets default form values
          */
-        const validateForecastRequest = ({ date, coordinates: { latitude, longitude } }) => {
 
-            if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-                return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
-            }
+        /**
+         * Creates a forecast form object with input management methods
+         * @param {HTMLInputElement} dateInput - Date input element
+         * @param {HTMLInputElement} latitudeInput - Latitude input element
+         * @param {HTMLInputElement} longitudeInput - Longitude input element
+         * @returns {ForecastForm} Forecast form object with methods
+         */
+        const createForecastForm = (dateInput, latitudeInput, longitudeInput) => {
+            return {
+                createRequest: () => {
+                    return {
+                        date: dateInput.value,
+                        coordinates: {
+                            latitude: parseFloat(latitudeInput.value),
+                            longitude: parseFloat(longitudeInput.value)
+                        }
+                    };
+                },
+                validate: () => {
+                    const date = dateInput.value;
+                    const latitude = parseFloat(latitudeInput.value);
+                    const longitude = parseFloat(longitudeInput.value);
 
-            if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-                return { valid: false, error: 'Latitude must be between -90 and 90.' };
-            }
+                    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+                        return { valid: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+                    }
 
-            if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-                return { valid: false, error: 'Longitude must be between -180 and 180.' };
-            }
+                    if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
+                        return { valid: false, error: 'Latitude must be between -90 and 90.' };
+                    }
 
-            return { valid: true, error: null };
+                    if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
+                        return { valid: false, error: 'Longitude must be between -180 and 180.' };
+                    }
+
+                    return { valid: true, error: null };
+                },
+                setDefaultValues: () => {
+                    // Set default date to today
+                    const today = new Date().toISOString().split('T')[0];
+                    dateInput.value = today;
+
+                    // Set default coordinates (New York City)
+                    latitudeInput.value = '40.7128';
+                    longitudeInput.value = '-74.0060';
+                }
+            };
         };
 
         // ========================================
@@ -834,9 +868,7 @@
                 event.preventDefault();
 
                 const {
-                    dateInput,
-                    latitudeInput,
-                    longitudeInput,
+                    form,
                     statusMessage,
                     forecast,
                     forecastHeader,
@@ -844,21 +876,15 @@
                     submitButton
                 } = appState;
 
-                // Create request object
-                const request = {
-                    date: dateInput.value,
-                    coordinates: {
-                        latitude: parseFloat(latitudeInput.value),
-                        longitude: parseFloat(longitudeInput.value)
-                    }
-                };
-
-                // Validate request
-                const validation = validateForecastRequest(request);
+                // Validate form
+                const validation = form.validate();
                 if (!validation.valid) {
                     statusMessage.show(validation.error, 'error');
                     return;
                 }
+
+                // Create request object
+                const request = form.createRequest();
 
                 // Show loading state
                 submitButton.disable();
@@ -891,35 +917,21 @@
 
         /**
          * @typedef {Object} AppState
-         * @property {HTMLInputElement} dateInput - Date input element
-         * @property {HTMLInputElement} latitudeInput - Latitude input element
-         * @property {HTMLInputElement} longitudeInput - Longitude input element
+         * @property {ForecastForm} form - Forecast form object
          * @property {StatusMessage} statusMessage - Status message object
          * @property {ForecastSection} forecast - Forecast section object
          * @property {ForecastHeader} forecastHeader - Forecast header object
          * @property {HTMLElement} forecastServices - Services container element
          * @property {SubmitButton} submitButton - Submit button object
-         * @property {() => void} setDefaultValues - Sets default form values
          */
 
         /**
-         * Creates application state object with UI components and methods
+         * Creates application state object with UI components
          * @param {Object} components - UI components
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
-            return {
-                ...components,
-                setDefaultValues: () => {
-                    // Set default date to today
-                    const today = new Date().toISOString().split('T')[0];
-                    components.dateInput.value = today;
-
-                    // Set default coordinates (New York City)
-                    components.latitudeInput.value = '40.7128';
-                    components.longitudeInput.value = '-74.0060';
-                }
-            };
+            return components;
         };
 
         /**
@@ -928,26 +940,26 @@
          */
         const initializeApp = () => {
             // Get DOM elements
-            const form = document.getElementById('forecastForm');
-            const dateInput = document.getElementById('dateInput');
-            const latitudeInput = document.getElementById('latitudeInput');
-            const longitudeInput = document.getElementById('longitudeInput');
+            const formElement = document.getElementById('forecastForm');
             const forecastServices = document.getElementById('forecastServices');
             
             // Create UI component objects
+            const form = createForecastForm(
+                document.getElementById('dateInput'),
+                document.getElementById('latitudeInput'),
+                document.getElementById('longitudeInput')
+            );
             const statusMessage = createStatusMessage(document.getElementById('statusMessage'));
             const forecast = createForecastSection(document.getElementById('forecastResults'));
             const forecastHeader = createForecastHeader(
                 document.getElementById('forecastLocation'),
                 document.getElementById('forecastDate')
             );
-            const submitButton = createSubmitButton(form.querySelector('.forecast-form__button'));
+            const submitButton = createSubmitButton(formElement.querySelector('.forecast-form__button'));
 
             // Create application state
             const appState = createAppState({
-                dateInput,
-                latitudeInput,
-                longitudeInput,
+                form,
                 statusMessage,
                 forecast,
                 forecastHeader,
@@ -964,11 +976,11 @@
             ];
 
             // Set default values
-            appState.setDefaultValues();
+            appState.form.setDefaultValues();
 
             // Create and attach form submit handler
             const handleFormSubmit = createFormSubmitHandler(appState, weatherServices);
-            form.addEventListener('submit', handleFormSubmit);
+            formElement.addEventListener('submit', handleFormSubmit);
         };
 
         // Initialize app when DOM is ready
