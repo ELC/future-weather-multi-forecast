@@ -698,15 +698,15 @@
         };
 
         /**
-         * Creates weather card success template
+         * Creates weather card success element
          * @param {ForecastResult} result - Forecast result with success state
-         * @returns {string} HTML template string
+         * @returns {HTMLElement} Weather card element
          */
         const createWeatherCardSuccessTemplate = ({ 
             serviceName, 
             data: { temperature, temperatureFahrenheit, description, icon, windSpeed, precipitation } 
         }) => {
-            return `
+            return createElement(`
                 <article class="weather-card">
                     <header class="weather-card__header">
                         <h3 class="weather-card__service">${serviceName}</h3>
@@ -734,16 +734,16 @@
                         </div>
                     </div>
                 </article>
-            `;
+            `);
         };
 
         /**
-         * Creates weather card error template
+         * Creates weather card error element
          * @param {ForecastResult} result - Forecast result with error state
-         * @returns {string} HTML template string
+         * @returns {HTMLElement} Weather card element
          */
         const createWeatherCardErrorTemplate = ({ serviceName, error }) => {
-            return `
+            return createElement(`
                 <article class="weather-card">
                     <header class="weather-card__header">
                         <h3 class="weather-card__service">${serviceName}</h3>
@@ -751,7 +751,7 @@
                     </header>
                     <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
                 </article>
-            `;
+            `);
         };
 
         /**
@@ -760,11 +760,9 @@
          * @returns {HTMLElement} Weather card element
          */
         const createWeatherCard = (result) => {
-            const template = result.success 
+            return result.success 
                 ? createWeatherCardSuccessTemplate(result)
                 : createWeatherCardErrorTemplate(result);
-            
-            return createElement(template);
         };
 
         /**
@@ -774,20 +772,15 @@
          * @returns {void}
          */
         const renderForecastResults = (container, results) => {
-            // Build complete HTML template for all cards
-            const cardsTemplate = results
-                .map(result => result.success 
+            // Create weather card elements for all results
+            const cardElements = results.map(result => 
+                result.success 
                     ? createWeatherCardSuccessTemplate(result)
                     : createWeatherCardErrorTemplate(result)
-                )
-                .join('');
+            );
             
-            // Create wrapper template and parse it
-            const wrapperTemplate = `<div>${cardsTemplate}</div>`;
-            const wrapper = createElement(wrapperTemplate);
-            
-            // Replace container's children with new content
-            container.replaceChildren(...wrapper.childNodes);
+            // Replace container's children with new elements
+            container.replaceChildren(...cardElements);
         };
 
         /**
