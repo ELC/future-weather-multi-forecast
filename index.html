@@ -416,6 +416,15 @@
          * @property {string} icon - Weather icon emoji
          */
 
+        /**
+         * @typedef {Object} OpenMeteoDailyData
+         * @property {Array<number>} temperature_2m_max - Maximum temperatures in Celsius
+         * @property {Array<number>} temperature_2m_min - Minimum temperatures in Celsius
+         * @property {Array<number>} weathercode - WMO weather codes
+         * @property {Array<number>} windspeed_10m_max - Maximum wind speeds in km/h
+         * @property {Array<number>} precipitation_sum - Precipitation sums in mm
+         */
+
         // ========================================
         // Constants
         // ========================================
@@ -502,7 +511,7 @@
                 },
                 /**
                  * Transforms Open-Meteo API response to WeatherData
-                 * @param {Object} daily - Daily weather data from API
+                 * @param {OpenMeteoDailyData} daily - Daily weather data from API
                  * @returns {WeatherData} Transformed weather data
                  */
                 transformOpenMeteoData: function(daily) {
@@ -514,7 +523,7 @@
                     return {
                         temperature: Math.round(avgTemp * 10) / 10,
                         temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
-                        description: WMO_WEATHER_DESCRIPTIONS[code] || 'Unknown',
+                        description: WMO_WEATHER_DESCRIPTIONS[weatherCode] || 'Unknown',
                         humidity: 0, // Not available in daily forecast
                         windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
                         precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
