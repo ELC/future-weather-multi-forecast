@@ -957,7 +957,7 @@
 
         /**
          * @typedef {Object} AppStateComponents
-         * @property {ForecastForm} form - Forecast form object
+         * @property {ForecastForm} forecastForm - Forecast form object
          * @property {StatusMessage} statusMessage - Status message object
          * @property {ForecastSection} forecast - Forecast section object
          * @property {ForecastHeader} forecastHeader - Forecast header object
@@ -968,7 +968,7 @@
 
         /**
          * @typedef {Object} AppState
-         * @property {ForecastForm} form - Forecast form object
+         * @property {ForecastForm} forecastForm - Forecast form object
          * @property {StatusMessage} statusMessage - Status message object
          * @property {ForecastSection} forecast - Forecast section object
          * @property {ForecastHeader} forecastHeader - Forecast header object
@@ -990,8 +990,8 @@
              * @returns {ForecastRequest|null} Request data or null if validation fails
              */
             const validateRequest = () => {
-                const { form, statusMessage } = components;
-                const result = form.createRequest();
+                const { forecastForm, statusMessage } = components;
+                const result = forecastForm.createRequest();
                 if ('error' in result) {
                     statusMessage.show(result.error, 'error');
                     return null;
@@ -1075,7 +1075,7 @@
          * @returns {void}
          */
         const initializeApp = () => {
-            const form = createForecastForm(
+            const forecastForm = createForecastForm(
                 document.getElementById('dateInput'),
                 document.getElementById('latitudeInput'),
                 document.getElementById('longitudeInput')
@@ -1095,7 +1095,7 @@
             ]);
 
             const appState = createAppState({
-                form,
+                forecastForm,
                 statusMessage,
                 forecast,
                 forecastHeader,
