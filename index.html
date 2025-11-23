@@ -682,76 +682,59 @@
         };
 
         /**
-         * Creates weather card header element
+         * Creates weather card success template
          * @param {string} serviceName - Name of the weather service
-         * @param {boolean} success - Whether the fetch was successful
-         * @returns {HTMLElement} Header element
-         */
-        const createWeatherCardHeader = (serviceName, success) => {
-            const status = success ? 'Active' : 'Error';
-            return createElement(`
-                <header class="weather-card__header">
-                    <h3 class="weather-card__service">${serviceName}</h3>
-                    <span class="weather-card__status">${status}</span>
-                </header>
-            `);
-        };
-
-        /**
-         * Creates weather card detail item
-         * @param {string} label - Detail label
-         * @param {string} value - Detail value
-         * @returns {HTMLElement} Detail element
-         */
-        const createWeatherDetail = (label, value) => {
-            return createElement(`
-                <div class="weather-card__detail">
-                    <span class="weather-card__detail-label">${label}</span>
-                    <span class="weather-card__detail-value">${value}</span>
-                </div>
-            `);
-        };
-
-        /**
-         * Creates weather card main content (success state)
          * @param {WeatherData} data - Weather data
-         * @returns {DocumentFragment} Document fragment with main content and details
+         * @returns {string} HTML template string
          */
-        const createWeatherCardContent = (data) => {
-            const fragment = document.createDocumentFragment();
-            
-            // Main section
-            const mainDiv = createElement(`
-                <div class="weather-card__main">
-                    <div class="weather-card__temperature">${data.temperature}°C</div>
-                    <div class="weather-card__condition">
-                        <div class="weather-card__description">${data.description}</div>
-                        <div class="weather-card__icon">${data.icon}</div>
+        const createWeatherCardSuccessTemplate = (serviceName, data) => {
+            return `
+                <article class="weather-card">
+                    <header class="weather-card__header">
+                        <h3 class="weather-card__service">${serviceName}</h3>
+                        <span class="weather-card__status">Active</span>
+                    </header>
+                    <div class="weather-card__main">
+                        <div class="weather-card__temperature">${data.temperature}°C</div>
+                        <div class="weather-card__condition">
+                            <div class="weather-card__description">${data.description}</div>
+                            <div class="weather-card__icon">${data.icon}</div>
+                        </div>
                     </div>
-                </div>
-            `);
-            
-            // Details section
-            const detailsDiv = createElement('<div class="weather-card__details"></div>');
-            detailsDiv.appendChild(createWeatherDetail('Fahrenheit', `${data.temperatureFahrenheit}°F`));
-            detailsDiv.appendChild(createWeatherDetail('Wind Speed', `${data.windSpeed} km/h`));
-            detailsDiv.appendChild(createWeatherDetail('Precipitation', `${data.precipitation} mm`));
-            
-            fragment.appendChild(mainDiv);
-            fragment.appendChild(detailsDiv);
-            
-            return fragment;
+                    <div class="weather-card__details">
+                        <div class="weather-card__detail">
+                            <span class="weather-card__detail-label">Fahrenheit</span>
+                            <span class="weather-card__detail-value">${data.temperatureFahrenheit}°F</span>
+                        </div>
+                        <div class="weather-card__detail">
+                            <span class="weather-card__detail-label">Wind Speed</span>
+                            <span class="weather-card__detail-value">${data.windSpeed} km/h</span>
+                        </div>
+                        <div class="weather-card__detail">
+                            <span class="weather-card__detail-label">Precipitation</span>
+                            <span class="weather-card__detail-value">${data.precipitation} mm</span>
+                        </div>
+                    </div>
+                </article>
+            `;
         };
 
         /**
-         * Creates weather card error content
+         * Creates weather card error template
+         * @param {string} serviceName - Name of the weather service
          * @param {string} error - Error message
-         * @returns {HTMLElement} Error paragraph element
+         * @returns {string} HTML template string
          */
-        const createWeatherCardError = (error) => {
-            return createElement(`
-                <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
-            `);
+        const createWeatherCardErrorTemplate = (serviceName, error) => {
+            return `
+                <article class="weather-card">
+                    <header class="weather-card__header">
+                        <h3 class="weather-card__service">${serviceName}</h3>
+                        <span class="weather-card__status">Error</span>
+                    </header>
+                    <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
+                </article>
+            `;
         };
 
         /**
@@ -762,31 +745,11 @@
         const createWeatherCard = (result) => {
             const { serviceName, data, success, error } = result;
             
-            const article = createElement('<article class="weather-card"></article>');
-            const header = createWeatherCardHeader(serviceName, success);
+            const template = success 
+                ? createWeatherCardSuccessTemplate(serviceName, data)
+                : createWeatherCardErrorTemplate(serviceName, error);
             
-            article.appendChild(header);
-            
-            if (success) {
-                const content = createWeatherCardContent(data);
-                article.appendChild(content);
-            } else {
-                const errorElement = createWeatherCardError(error);
-                article.appendChild(errorElement);
-            }
-            
-            return article;
-        };
-
-        /**
-         * Clears all child nodes from a container element
-         * @param {HTMLElement} container - Container element to clear
-         * @returns {void}
-         */
-        const clearContainer = (container) => {
-            while (container.firstChild) {
-                container.removeChild(container.firstChild);
-            }
+            return createElement(template);
         };
 
         /**
@@ -796,20 +759,22 @@
          * @returns {void}
          */
         const renderForecastResults = (container, results) => {
-            // Clear existing content using node removal
-            clearContainer(container);
+            // Build complete HTML template for all cards
+            const cardsTemplate = results
+                .map(result => {
+                    const { serviceName, data, success, error } = result;
+                    return success 
+                        ? createWeatherCardSuccessTemplate(serviceName, data)
+                        : createWeatherCardErrorTemplate(serviceName, error);
+                })
+                .join('');
             
-            // Create document fragment for efficient DOM manipulation
-            const fragment = document.createDocumentFragment();
+            // Create wrapper template and parse it
+            const wrapperTemplate = `<div>${cardsTemplate}</div>`;
+            const wrapper = createElement(wrapperTemplate);
             
-            // Create and append weather cards to fragment
-            results.forEach(result => {
-                const card = createWeatherCard(result);
-                fragment.appendChild(card);
-            });
-            
-            // Append all cards at once
-            container.appendChild(fragment);
+            // Replace container's children with new content
+            container.replaceChildren(...wrapper.childNodes);
         };
 
         /**
