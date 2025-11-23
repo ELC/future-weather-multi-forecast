@@ -985,7 +985,7 @@
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
-            const { form, statusMessage } = components;
+            const { form, statusMessage, forecast, submitButton } = components;
 
             /**
              * Validates and creates forecast request
@@ -998,6 +998,16 @@
                     return null;
                 }
                 return result.data;
+            };
+
+            /**
+             * Shows loading state
+             * @returns {void}
+             */
+            const showLoadingState = () => {
+                submitButton.disable();
+                statusMessage.show('Fetching forecast data...', 'loading');
+                forecast.hide();
             };
 
             return {
@@ -1017,20 +1027,15 @@
                  */
                 update: async () => {
                     const {
-                        statusMessage,
-                        forecast,
                         forecastHeader,
                         forecastServices,
-                        submitButton,
                         weatherService
                     } = components;
 
                     const request = validateRequest();
                     if (!request) return;
 
-                    submitButton.disable();
-                    statusMessage.show('Fetching forecast data...', 'loading');
-                    forecast.hide();
+                    showLoadingState();
 
                     try {
                         const results = await weatherService.forecast(request);
