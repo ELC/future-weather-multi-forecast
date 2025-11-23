@@ -923,6 +923,7 @@
          * @property {ForecastHeader} forecastHeader - Forecast header object
          * @property {HTMLElement} forecastServices - Services container element
          * @property {SubmitButton} submitButton - Submit button object
+         * @property {() => void} setDefaultValues - Sets default values for all components
          */
 
         /**
@@ -931,7 +932,17 @@
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
-            return components;
+            return {
+                ...components,
+                setDefaultValues: () => {
+                    // Call setDefaultValues on each component that has it
+                    Object.values(components).forEach(component => {
+                        if (component && typeof component.setDefaultValues === 'function') {
+                            component.setDefaultValues();
+                        }
+                    });
+                }
+            };
         };
 
         /**
@@ -976,7 +987,7 @@
             ];
 
             // Set default values
-            appState.form.setDefaultValues();
+            appState.setDefaultValues();
 
             // Create and attach form submit handler
             const handleFormSubmit = createFormSubmitHandler(appState, weatherServices);
