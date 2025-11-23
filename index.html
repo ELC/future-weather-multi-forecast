@@ -402,12 +402,27 @@
          */
 
         // ========================================
+        // Constants Type Definitions
+        // ========================================
+
+        /**
+         * @typedef {Object.<number, string>} WeatherDescriptionMap
+         * Mapping of WMO weather codes to their descriptions
+         */
+
+        /**
+         * @typedef {Object} WeatherIconMapping
+         * @property {number} max - Maximum weather code for this icon
+         * @property {string} icon - Weather icon emoji
+         */
+
+        // ========================================
         // Constants
         // ========================================
 
         /**
          * WMO Weather code descriptions mapping
-         * @type {Object<number, string>}
+         * @type {WeatherDescriptionMap}
          */
         const WMO_WEATHER_DESCRIPTIONS = {
             0: 'Clear sky',
@@ -438,7 +453,7 @@
 
         /**
          * WMO Weather code to icon mapping ranges
-         * @type {Array<{max: number, icon: string}>}
+         * @type {Array<WeatherIconMapping>}
          */
         const WMO_WEATHER_ICONS = [
             { max: 0, icon: '☀️' },
