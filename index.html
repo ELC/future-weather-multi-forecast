@@ -897,51 +897,7 @@
                 registerWeatherService: (appState, weatherService) => {
                     const handleSubmit = async (event) => {
                         event.preventDefault();
-
-                        const {
-                            form,
-                            statusMessage,
-                            forecast,
-                            forecastHeader,
-                            forecastServices,
-                            submitButton
-                        } = appState;
-
-                        // Create and validate request
-                        const result = form.createRequest();
-                        if ('error' in result) {
-                            statusMessage.show(result.error, 'error');
-                            return;
-                        }
-
-                        const request = result.data;
-
-                        // Show loading state
-                        submitButton.disable();
-                        statusMessage.show('Fetching forecast data...', 'loading');
-                        forecast.hide();
-
-                        try {
-                            // Fetch forecasts from all providers
-                            const results = await weatherService.forecast(request);
-
-                            // Hide loading status
-                            statusMessage.hide();
-
-                            // Update forecast header
-                            forecastHeader.update(request);
-
-                            // Render results
-                            forecastServices.render(results);
-
-                            // Show forecast section
-                            forecast.show();
-
-                        } catch (error) {
-                            statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
-                        } finally {
-                            submitButton.enable();
-                        }
+                        await appState.update(weatherService);
                     };
 
                     element.addEventListener('submit', handleSubmit);
@@ -958,6 +914,7 @@
          * @property {ForecastServices} forecastServices - Forecast services object
          * @property {SubmitButton} submitButton - Submit button object
          * @property {() => void} setDefaultValues - Sets default values for all components
+         * @property {(weatherService: WeatherService) => Promise<void>} update - Updates forecast with weather service
          */
 
         /**
@@ -972,6 +929,52 @@
                     Object.values(components)
                         .filter(component => component && typeof component.setDefaultValues === 'function')
                         .forEach(component => component.setDefaultValues());
+                },
+                update: async function(weatherService) {
+                    const {
+                        form,
+                        statusMessage,
+                        forecast,
+                        forecastHeader,
+                        forecastServices,
+                        submitButton
+                    } = this;
+
+                    // Create and validate request
+                    const result = form.createRequest();
+                    if ('error' in result) {
+                        statusMessage.show(result.error, 'error');
+                        return;
+                    }
+
+                    const request = result.data;
+
+                    // Show loading state
+                    submitButton.disable();
+                    statusMessage.show('Fetching forecast data...', 'loading');
+                    forecast.hide();
+
+                    try {
+                        // Fetch forecasts from all providers
+                        const results = await weatherService.forecast(request);
+
+                        // Hide loading status
+                        statusMessage.hide();
+
+                        // Update forecast header
+                        forecastHeader.update(request);
+
+                        // Render results
+                        forecastServices.render(results);
+
+                        // Show forecast section
+                        forecast.show();
+
+                    } catch (error) {
+                        statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
+                    } finally {
+                        submitButton.enable();
+                    }
                 }
             };
         };
