@@ -592,6 +592,11 @@
          */
         const createWeatherService = (providers) => {
             return {
+                /**
+                 * Fetches forecasts from all providers
+                 * @param {ForecastRequest} request - Forecast request parameters
+                 * @returns {Promise<Array<ForecastResult>>} Array of forecast results from all providers
+                 */
                 forecast: async (request) => {
                     const promises = providers.map(provider => provider.fetchForecast(request));
                     return await Promise.all(promises);
@@ -619,6 +624,10 @@
          */
         const createForecastForm = (dateInput, latitudeInput, longitudeInput) => {
             return {
+                /**
+                 * Validates form values
+                 * @returns {{valid: boolean, error: string|null}} Validation result
+                 */
                 validate: () => {
                     const date = dateInput.value;
                     const latitude = parseFloat(latitudeInput.value);
@@ -638,6 +647,10 @@
 
                     return { valid: true, error: null };
                 },
+                /**
+                 * Creates and validates forecast request
+                 * @returns {ForecastRequestResult} Request result with data or error
+                 */
                 createRequest: function() {
                     // Validate inputs first
                     const validation = this.validate();
@@ -656,6 +669,10 @@
                         }
                     };
                 },
+                /**
+                 * Sets default form values
+                 * @returns {void}
+                 */
                 setDefaultValues: () => {
                     // Set default date to today
                     const today = new Date().toISOString().split('T')[0];
@@ -685,11 +702,21 @@
          */
         const createStatusMessage = (element) => {
             return {
+                /**
+                 * Shows status message
+                 * @param {string} message - Message to display
+                 * @param {'loading'|'error'} type - Message type
+                 * @returns {void}
+                 */
                 show: (message, type) => {
                     element.textContent = message;
                     element.classList.remove('status--hidden', 'status--loading', 'status--error');
                     element.classList.add('status', `status--${type}`);
                 },
+                /**
+                 * Hides status message
+                 * @returns {void}
+                 */
                 hide: () => {
                     element.classList.remove('status--loading', 'status--error');
                     element.classList.add('status--hidden');
@@ -710,9 +737,17 @@
          */
         const createForecastSection = (element) => {
             return {
+                /**
+                 * Shows forecast section
+                 * @returns {void}
+                 */
                 show: () => {
                     element.classList.remove('forecast--hidden');
                 },
+                /**
+                 * Hides forecast section
+                 * @returns {void}
+                 */
                 hide: () => {
                     element.classList.add('forecast--hidden');
                 }
@@ -732,6 +767,11 @@
          */
         const createForecastHeader = (locationElement, dateElement) => {
             return {
+                /**
+                 * Updates forecast header with request data
+                 * @param {ForecastRequest} request - Forecast request with coordinates and date
+                 * @returns {void}
+                 */
                 update: ({ coordinates, date }) => {
                     locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
                     dateElement.textContent = new Date(date).toLocaleDateString('en-US', {
@@ -835,6 +875,11 @@
          */
         const createForecastServices = (container) => {
             return {
+                /**
+                 * Renders forecast results
+                 * @param {Array<ForecastResult>} results - Array of forecast results to render
+                 * @returns {void}
+                 */
                 render: (results) => {
                     const cardElements = results.map(result => 
                         result.success 
@@ -861,9 +906,17 @@
         const createSubmitButton = (formElement) => {
             const buttonElement = formElement.button;
             return {
+                /**
+                 * Enables the submit button
+                 * @returns {void}
+                 */
                 enable: () => {
                     buttonElement.disabled = false;
                 },
+                /**
+                 * Disables the submit button
+                 * @returns {void}
+                 */
                 disable: () => {
                     buttonElement.disabled = true;
                 }
@@ -887,7 +940,16 @@
          */
         const createFormElement = (element) => {
             return {
+                /**
+                 * Form submit button element
+                 * @type {HTMLButtonElement}
+                 */
                 button: element.querySelector('.forecast-form__button'),
+                /**
+                 * Registers async submit callback handler
+                 * @param {() => Promise<void>} callback - Async callback to execute on form submit
+                 * @returns {void}
+                 */
                 onSubmit: (callback) => {
                     const handleSubmit = async (event) => {
                         event.preventDefault();
@@ -931,11 +993,19 @@
         const createAppState = (components) => {
             return {
                 ...components,
+                /**
+                 * Sets default values for all components
+                 * @returns {void}
+                 */
                 setDefaultValues: () => {
                     Object.values(components)
                         .filter(component => component && typeof component.setDefaultValues === 'function')
                         .forEach(component => component.setDefaultValues());
                 },
+                /**
+                 * Updates forecast with registered weather service
+                 * @returns {Promise<void>}
+                 */
                 update: async () => {
                     const {
                         form,
