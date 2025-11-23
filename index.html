@@ -784,21 +784,25 @@
         };
 
         /**
-         * Enables form button
-         * @param {HTMLButtonElement} button - Form submit button
-         * @returns {void}
+         * @typedef {Object} SubmitButton
+         * @property {() => void} enable - Enables the submit button
+         * @property {() => void} disable - Disables the submit button
          */
-        const enableFormButton = (button) => {
-            button.disabled = false;
-        };
 
         /**
-         * Disables form button
-         * @param {HTMLButtonElement} button - Form submit button
-         * @returns {void}
+         * Creates a submit button object with enable/disable methods
+         * @param {HTMLButtonElement} buttonElement - The button DOM element
+         * @returns {SubmitButton} Submit button object with methods
          */
-        const disableFormButton = (button) => {
-            button.disabled = true;
+        const createSubmitButton = (buttonElement) => {
+            return {
+                enable: () => {
+                    buttonElement.disabled = false;
+                },
+                disable: () => {
+                    buttonElement.disabled = true;
+                }
+            };
         };
 
         // ========================================
@@ -862,7 +866,7 @@
                 }
 
                 // Show loading state
-                disableFormButton(submitButton);
+                submitButton.disable();
                 showStatus(statusMessage, 'Fetching forecast data...', 'loading');
                 hideForecast(forecastResults);
 
@@ -888,7 +892,7 @@
                 } catch (error) {
                     showStatus(statusMessage, `Failed to fetch forecast: ${error.message}`, 'error');
                 } finally {
-                    enableFormButton(submitButton);
+                    submitButton.enable();
                 }
             };
         };
@@ -924,7 +928,7 @@
             const forecastLocation = document.getElementById('forecastLocation');
             const forecastDate = document.getElementById('forecastDate');
             const forecastServices = document.getElementById('forecastServices');
-            const submitButton = form.querySelector('.forecast-form__button');
+            const submitButton = createSubmitButton(form.querySelector('.forecast-form__button'));
 
             const elements = {
                 dateInput,
