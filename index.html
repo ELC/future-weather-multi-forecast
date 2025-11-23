@@ -402,6 +402,57 @@
          */
 
         // ========================================
+        // Constants
+        // ========================================
+
+        /**
+         * WMO Weather code descriptions mapping
+         * @type {Object<number, string>}
+         */
+        const WMO_WEATHER_DESCRIPTIONS = {
+            0: 'Clear sky',
+            1: 'Mainly clear',
+            2: 'Partly cloudy',
+            3: 'Overcast',
+            45: 'Foggy',
+            48: 'Depositing rime fog',
+            51: 'Light drizzle',
+            53: 'Moderate drizzle',
+            55: 'Dense drizzle',
+            61: 'Slight rain',
+            63: 'Moderate rain',
+            65: 'Heavy rain',
+            71: 'Slight snow',
+            73: 'Moderate snow',
+            75: 'Heavy snow',
+            77: 'Snow grains',
+            80: 'Slight rain showers',
+            81: 'Moderate rain showers',
+            82: 'Violent rain showers',
+            85: 'Slight snow showers',
+            86: 'Heavy snow showers',
+            95: 'Thunderstorm',
+            96: 'Thunderstorm with slight hail',
+            99: 'Thunderstorm with heavy hail'
+        };
+
+        /**
+         * WMO Weather code to icon mapping ranges
+         * @type {Array<{max: number, icon: string}>}
+         */
+        const WMO_WEATHER_ICONS = [
+            { max: 0, icon: '☀️' },
+            { max: 3, icon: '⛅' },
+            { max: 48, icon: '🌫️' },
+            { max: 55, icon: '🌦️' },
+            { max: 65, icon: '🌧️' },
+            { max: 77, icon: '❄️' },
+            { max: 82, icon: '🌧️' },
+            { max: 86, icon: '🌨️' },
+            { max: Infinity, icon: '⛈️' }
+        ];
+
+        // ========================================
         // Business Logic - Weather Services
         // ========================================
 
@@ -491,33 +542,7 @@
          * @returns {string} Weather description
          */
         const getWeatherDescription = (code) => {
-            const descriptions = {
-                0: 'Clear sky',
-                1: 'Mainly clear',
-                2: 'Partly cloudy',
-                3: 'Overcast',
-                45: 'Foggy',
-                48: 'Depositing rime fog',
-                51: 'Light drizzle',
-                53: 'Moderate drizzle',
-                55: 'Dense drizzle',
-                61: 'Slight rain',
-                63: 'Moderate rain',
-                65: 'Heavy rain',
-                71: 'Slight snow',
-                73: 'Moderate snow',
-                75: 'Heavy snow',
-                77: 'Snow grains',
-                80: 'Slight rain showers',
-                81: 'Moderate rain showers',
-                82: 'Violent rain showers',
-                85: 'Slight snow showers',
-                86: 'Heavy snow showers',
-                95: 'Thunderstorm',
-                96: 'Thunderstorm with slight hail',
-                99: 'Thunderstorm with heavy hail'
-            };
-            return descriptions[code] || 'Unknown';
+            return WMO_WEATHER_DESCRIPTIONS[code] || 'Unknown';
         };
 
         /**
@@ -526,15 +551,8 @@
          * @returns {string} Weather icon
          */
         const getWeatherIcon = (code) => {
-            if (code === 0) return '☀️';
-            if (code <= 3) return '⛅';
-            if (code <= 48) return '🌫️';
-            if (code <= 55) return '🌦️';
-            if (code <= 65) return '🌧️';
-            if (code <= 77) return '❄️';
-            if (code <= 82) return '🌧️';
-            if (code <= 86) return '🌨️';
-            return '⛈️';
+            const iconMapping = WMO_WEATHER_ICONS.find(mapping => code <= mapping.max);
+            return iconMapping ? iconMapping.icon : '❓';
         };
 
         /**
@@ -653,50 +671,134 @@
         };
 
         /**
+         * Creates an element with a class name and text content
+         * @param {string} tag - HTML tag name
+         * @param {string} className - CSS class name
+         * @param {string} textContent - Text content
+         * @returns {HTMLElement} Created element
+         */
+        const createElement = (tag, className, textContent = '') => {
+            const element = document.createElement(tag);
+            if (className) {
+                element.className = className;
+            }
+            if (textContent) {
+                element.textContent = textContent;
+            }
+            return element;
+        };
+
+        /**
+         * Creates weather card header element
+         * @param {string} serviceName - Name of the weather service
+         * @param {boolean} success - Whether the fetch was successful
+         * @returns {HTMLElement} Header element
+         */
+        const createWeatherCardHeader = (serviceName, success) => {
+            const header = createElement('header', 'weather-card__header');
+            const serviceTitle = createElement('h3', 'weather-card__service', serviceName);
+            const statusBadge = createElement('span', 'weather-card__status', success ? 'Active' : 'Error');
+            
+            header.appendChild(serviceTitle);
+            header.appendChild(statusBadge);
+            
+            return header;
+        };
+
+        /**
+         * Creates weather card detail item
+         * @param {string} label - Detail label
+         * @param {string} value - Detail value
+         * @returns {HTMLElement} Detail element
+         */
+        const createWeatherDetail = (label, value) => {
+            const detailDiv = createElement('div', 'weather-card__detail');
+            const labelSpan = createElement('span', 'weather-card__detail-label', label);
+            const valueSpan = createElement('span', 'weather-card__detail-value', value);
+            
+            detailDiv.appendChild(labelSpan);
+            detailDiv.appendChild(valueSpan);
+            
+            return detailDiv;
+        };
+
+        /**
+         * Creates weather card main content (success state)
+         * @param {WeatherData} data - Weather data
+         * @returns {DocumentFragment} Document fragment with main content and details
+         */
+        const createWeatherCardContent = (data) => {
+            const fragment = document.createDocumentFragment();
+            
+            // Main section
+            const mainDiv = createElement('div', 'weather-card__main');
+            const temperatureDiv = createElement('div', 'weather-card__temperature', `${data.temperature}°C`);
+            const conditionDiv = createElement('div', 'weather-card__condition');
+            const descriptionDiv = createElement('div', 'weather-card__description', data.description);
+            const iconDiv = createElement('div', 'weather-card__icon', data.icon);
+            
+            conditionDiv.appendChild(descriptionDiv);
+            conditionDiv.appendChild(iconDiv);
+            mainDiv.appendChild(temperatureDiv);
+            mainDiv.appendChild(conditionDiv);
+            
+            // Details section
+            const detailsDiv = createElement('div', 'weather-card__details');
+            detailsDiv.appendChild(createWeatherDetail('Fahrenheit', `${data.temperatureFahrenheit}°F`));
+            detailsDiv.appendChild(createWeatherDetail('Wind Speed', `${data.windSpeed} km/h`));
+            detailsDiv.appendChild(createWeatherDetail('Precipitation', `${data.precipitation} mm`));
+            
+            fragment.appendChild(mainDiv);
+            fragment.appendChild(detailsDiv);
+            
+            return fragment;
+        };
+
+        /**
+         * Creates weather card error content
+         * @param {string} error - Error message
+         * @returns {HTMLElement} Error paragraph element
+         */
+        const createWeatherCardError = (error) => {
+            const paragraph = createElement('p', '', `Error: ${error}`);
+            paragraph.style.opacity = '0.8';
+            paragraph.style.marginTop = '1rem';
+            return paragraph;
+        };
+
+        /**
          * Creates a weather card element
          * @param {ForecastResult} result - Forecast result
          * @returns {HTMLElement} Weather card element
          */
         const createWeatherCard = (result) => {
-            const article = document.createElement('article');
-            article.className = 'weather-card';
-
             const { serviceName, data, success, error } = result;
-            const status = success ? 'Active' : 'Error';
-
-            article.innerHTML = `
-                <header class="weather-card__header">
-                    <h3 class="weather-card__service">${serviceName}</h3>
-                    <span class="weather-card__status">${status}</span>
-                </header>
-                ${success ? `
-                    <div class="weather-card__main">
-                        <div class="weather-card__temperature">${data.temperature}°C</div>
-                        <div class="weather-card__condition">
-                            <div class="weather-card__description">${data.description}</div>
-                            <div class="weather-card__icon">${data.icon}</div>
-                        </div>
-                    </div>
-                    <div class="weather-card__details">
-                        <div class="weather-card__detail">
-                            <span class="weather-card__detail-label">Fahrenheit</span>
-                            <span class="weather-card__detail-value">${data.temperatureFahrenheit}°F</span>
-                        </div>
-                        <div class="weather-card__detail">
-                            <span class="weather-card__detail-label">Wind Speed</span>
-                            <span class="weather-card__detail-value">${data.windSpeed} km/h</span>
-                        </div>
-                        <div class="weather-card__detail">
-                            <span class="weather-card__detail-label">Precipitation</span>
-                            <span class="weather-card__detail-value">${data.precipitation} mm</span>
-                        </div>
-                    </div>
-                ` : `
-                    <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
-                `}
-            `;
-
+            
+            const article = createElement('article', 'weather-card');
+            const header = createWeatherCardHeader(serviceName, success);
+            
+            article.appendChild(header);
+            
+            if (success) {
+                const content = createWeatherCardContent(data);
+                article.appendChild(content);
+            } else {
+                const errorElement = createWeatherCardError(error);
+                article.appendChild(errorElement);
+            }
+            
             return article;
+        };
+
+        /**
+         * Clears all child nodes from a container element
+         * @param {HTMLElement} container - Container element to clear
+         * @returns {void}
+         */
+        const clearContainer = (container) => {
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
         };
 
         /**
@@ -706,14 +808,20 @@
          * @returns {void}
          */
         const renderForecastResults = (container, results) => {
-            // Clear existing content
-            container.innerHTML = '';
+            // Clear existing content using node removal
+            clearContainer(container);
             
-            // Create and append weather cards
+            // Create document fragment for efficient DOM manipulation
+            const fragment = document.createDocumentFragment();
+            
+            // Create and append weather cards to fragment
             results.forEach(result => {
                 const card = createWeatherCard(result);
-                container.appendChild(card);
+                fragment.appendChild(card);
             });
+            
+            // Append all cards at once
+            container.appendChild(fragment);
         };
 
         /**
@@ -739,45 +847,44 @@
         // ========================================
 
         /**
-         * Initializes the weather forecast application
-         * @returns {void}
+         * @typedef {Object} AppElements
+         * @property {HTMLInputElement} dateInput - Date input element
+         * @property {HTMLInputElement} latitudeInput - Latitude input element
+         * @property {HTMLInputElement} longitudeInput - Longitude input element
+         * @property {HTMLElement} statusMessage - Status message element
+         * @property {HTMLElement} forecastResults - Forecast results section
+         * @property {HTMLElement} forecastLocation - Location display element
+         * @property {HTMLElement} forecastDate - Date display element
+         * @property {HTMLElement} forecastServices - Services container element
+         * @property {HTMLButtonElement} submitButton - Submit button element
          */
-        const initializeApp = () => {
-            // Get DOM elements
-            const form = document.getElementById('forecastForm');
-            const dateInput = document.getElementById('dateInput');
-            const latitudeInput = document.getElementById('latitudeInput');
-            const longitudeInput = document.getElementById('longitudeInput');
-            const statusMessage = document.getElementById('statusMessage');
-            const forecastResults = document.getElementById('forecastResults');
-            const forecastLocation = document.getElementById('forecastLocation');
-            const forecastDate = document.getElementById('forecastDate');
-            const forecastServices = document.getElementById('forecastServices');
-            const submitButton = form.querySelector('.forecast-form__button');
 
-            // Initialize weather services
-            const weatherServices = [
-                createOpenMeteoService()
-                // Additional services can be added here:
-                // createWeatherAPIService(),
-                // createOpenWeatherMapService(),
-            ];
-
-            // Set default date to today
-            const today = new Date().toISOString().split('T')[0];
-            dateInput.value = today;
-
-            // Set default coordinates (New York City)
-            latitudeInput.value = '40.7128';
-            longitudeInput.value = '-74.0060';
-
+        /**
+         * Creates form submit handler with dependencies
+         * @param {AppElements} elements - DOM elements
+         * @param {Array<WeatherService>} weatherServices - Weather services
+         * @returns {(event: Event) => Promise<void>} Form submit handler
+         */
+        const createFormSubmitHandler = (elements, weatherServices) => {
             /**
              * Handles form submission
              * @param {Event} event - Form submit event
              * @returns {Promise<void>}
              */
-            const handleFormSubmit = async (event) => {
+            return async (event) => {
                 event.preventDefault();
+
+                const {
+                    dateInput,
+                    latitudeInput,
+                    longitudeInput,
+                    statusMessage,
+                    forecastResults,
+                    forecastLocation,
+                    forecastDate,
+                    forecastServices,
+                    submitButton
+                } = elements;
 
                 // Create request object
                 const request = {
@@ -827,8 +934,67 @@
                     enableFormButton(submitButton);
                 }
             };
+        };
 
-            // Attach event listener
+        /**
+         * Sets default form values
+         * @param {AppElements} elements - DOM elements
+         * @returns {void}
+         */
+        const setDefaultFormValues = (elements) => {
+            const { dateInput, latitudeInput, longitudeInput } = elements;
+            
+            // Set default date to today
+            const today = new Date().toISOString().split('T')[0];
+            dateInput.value = today;
+
+            // Set default coordinates (New York City)
+            latitudeInput.value = '40.7128';
+            longitudeInput.value = '-74.0060';
+        };
+
+        /**
+         * Initializes the weather forecast application
+         * @returns {void}
+         */
+        const initializeApp = () => {
+            // Get DOM elements
+            const form = document.getElementById('forecastForm');
+            const dateInput = document.getElementById('dateInput');
+            const latitudeInput = document.getElementById('latitudeInput');
+            const longitudeInput = document.getElementById('longitudeInput');
+            const statusMessage = document.getElementById('statusMessage');
+            const forecastResults = document.getElementById('forecastResults');
+            const forecastLocation = document.getElementById('forecastLocation');
+            const forecastDate = document.getElementById('forecastDate');
+            const forecastServices = document.getElementById('forecastServices');
+            const submitButton = form.querySelector('.forecast-form__button');
+
+            const elements = {
+                dateInput,
+                latitudeInput,
+                longitudeInput,
+                statusMessage,
+                forecastResults,
+                forecastLocation,
+                forecastDate,
+                forecastServices,
+                submitButton
+            };
+
+            // Initialize weather services
+            const weatherServices = [
+                createOpenMeteoService()
+                // Additional services can be added here:
+                // createWeatherAPIService(),
+                // createOpenWeatherMapService(),
+            ];
+
+            // Set default values
+            setDefaultFormValues(elements);
+
+            // Create and attach form submit handler
+            const handleFormSubmit = createFormSubmitHandler(elements, weatherServices);
             form.addEventListener('submit', handleFormSubmit);
         };
 
