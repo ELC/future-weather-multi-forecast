@@ -671,21 +671,14 @@
         };
 
         /**
-         * Creates an element with a class name and text content
-         * @param {string} tag - HTML tag name
-         * @param {string} className - CSS class name
-         * @param {string} textContent - Text content
+         * Creates an HTML element from a template string
+         * @param {string} template - HTML template string
          * @returns {HTMLElement} Created element
          */
-        const createElement = (tag, className, textContent = '') => {
-            const element = document.createElement(tag);
-            if (className) {
-                element.className = className;
-            }
-            if (textContent) {
-                element.textContent = textContent;
-            }
-            return element;
+        const createElement = (template) => {
+            const container = document.createElement('template');
+            container.innerHTML = template.trim();
+            return container.content.firstElementChild;
         };
 
         /**
@@ -695,14 +688,13 @@
          * @returns {HTMLElement} Header element
          */
         const createWeatherCardHeader = (serviceName, success) => {
-            const header = createElement('header', 'weather-card__header');
-            const serviceTitle = createElement('h3', 'weather-card__service', serviceName);
-            const statusBadge = createElement('span', 'weather-card__status', success ? 'Active' : 'Error');
-            
-            header.appendChild(serviceTitle);
-            header.appendChild(statusBadge);
-            
-            return header;
+            const status = success ? 'Active' : 'Error';
+            return createElement(`
+                <header class="weather-card__header">
+                    <h3 class="weather-card__service">${serviceName}</h3>
+                    <span class="weather-card__status">${status}</span>
+                </header>
+            `);
         };
 
         /**
@@ -712,14 +704,12 @@
          * @returns {HTMLElement} Detail element
          */
         const createWeatherDetail = (label, value) => {
-            const detailDiv = createElement('div', 'weather-card__detail');
-            const labelSpan = createElement('span', 'weather-card__detail-label', label);
-            const valueSpan = createElement('span', 'weather-card__detail-value', value);
-            
-            detailDiv.appendChild(labelSpan);
-            detailDiv.appendChild(valueSpan);
-            
-            return detailDiv;
+            return createElement(`
+                <div class="weather-card__detail">
+                    <span class="weather-card__detail-label">${label}</span>
+                    <span class="weather-card__detail-value">${value}</span>
+                </div>
+            `);
         };
 
         /**
@@ -731,19 +721,18 @@
             const fragment = document.createDocumentFragment();
             
             // Main section
-            const mainDiv = createElement('div', 'weather-card__main');
-            const temperatureDiv = createElement('div', 'weather-card__temperature', `${data.temperature}°C`);
-            const conditionDiv = createElement('div', 'weather-card__condition');
-            const descriptionDiv = createElement('div', 'weather-card__description', data.description);
-            const iconDiv = createElement('div', 'weather-card__icon', data.icon);
-            
-            conditionDiv.appendChild(descriptionDiv);
-            conditionDiv.appendChild(iconDiv);
-            mainDiv.appendChild(temperatureDiv);
-            mainDiv.appendChild(conditionDiv);
+            const mainDiv = createElement(`
+                <div class="weather-card__main">
+                    <div class="weather-card__temperature">${data.temperature}°C</div>
+                    <div class="weather-card__condition">
+                        <div class="weather-card__description">${data.description}</div>
+                        <div class="weather-card__icon">${data.icon}</div>
+                    </div>
+                </div>
+            `);
             
             // Details section
-            const detailsDiv = createElement('div', 'weather-card__details');
+            const detailsDiv = createElement('<div class="weather-card__details"></div>');
             detailsDiv.appendChild(createWeatherDetail('Fahrenheit', `${data.temperatureFahrenheit}°F`));
             detailsDiv.appendChild(createWeatherDetail('Wind Speed', `${data.windSpeed} km/h`));
             detailsDiv.appendChild(createWeatherDetail('Precipitation', `${data.precipitation} mm`));
@@ -760,10 +749,9 @@
          * @returns {HTMLElement} Error paragraph element
          */
         const createWeatherCardError = (error) => {
-            const paragraph = createElement('p', '', `Error: ${error}`);
-            paragraph.style.opacity = '0.8';
-            paragraph.style.marginTop = '1rem';
-            return paragraph;
+            return createElement(`
+                <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
+            `);
         };
 
         /**
@@ -774,7 +762,7 @@
         const createWeatherCard = (result) => {
             const { serviceName, data, success, error } = result;
             
-            const article = createElement('article', 'weather-card');
+            const article = createElement('<article class="weather-card"></article>');
             const header = createWeatherCardHeader(serviceName, success);
             
             article.appendChild(header);
