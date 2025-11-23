@@ -956,24 +956,32 @@
         };
 
         /**
+         * @typedef {Object} ForecastFormComponent
+         * @property {ForecastForm} form - Forecast form validation and request creation
+         * @property {FormElement} element - Form DOM element with event handling
+         * @property {SubmitButton} button - Submit button control
+         */
+
+        /**
+         * @typedef {Object} ForecastResultComponent
+         * @property {ForecastSection} section - Forecast section visibility control
+         * @property {ForecastHeader} header - Forecast header with location and date
+         * @property {ForecastServices} services - Services container for weather cards
+         */
+
+        /**
          * @typedef {Object} AppStateComponents
-         * @property {ForecastForm} forecastForm - Forecast form object
+         * @property {ForecastFormComponent} forecastForm - Forecast form with button and element
          * @property {StatusMessage} statusMessage - Status message object
-         * @property {ForecastSection} forecast - Forecast section object
-         * @property {ForecastHeader} forecastHeader - Forecast header object
-         * @property {ForecastServices} forecastServices - Forecast services object
-         * @property {SubmitButton} submitButton - Submit button object
+         * @property {ForecastResultComponent} forecastResult - Forecast result display components
          * @property {WeatherService} weatherService - Weather service object
          */
 
         /**
          * @typedef {Object} AppState
-         * @property {ForecastForm} forecastForm - Forecast form object
+         * @property {ForecastFormComponent} forecastForm - Forecast form with button and element
          * @property {StatusMessage} statusMessage - Status message object
-         * @property {ForecastSection} forecast - Forecast section object
-         * @property {ForecastHeader} forecastHeader - Forecast header object
-         * @property {ForecastServices} forecastServices - Forecast services object
-         * @property {SubmitButton} submitButton - Submit button object
+         * @property {ForecastResultComponent} forecastResult - Forecast result display components
          * @property {WeatherService} weatherService - Weather service object
          * @property {() => void} setDefaultValues - Sets default values for all components
          * @property {() => Promise<void>} update - Updates forecast with registered weather service
@@ -991,7 +999,7 @@
              */
             const validateRequest = () => {
                 const { forecastForm, statusMessage } = components;
-                const result = forecastForm.createRequest();
+                const result = forecastForm.form.createRequest();
                 if ('error' in result) {
                     statusMessage.show(result.error, 'error');
                     return null;
@@ -1004,10 +1012,10 @@
              * @returns {void}
              */
             const showLoadingState = () => {
-                const { submitButton, statusMessage, forecast } = components;
-                submitButton.disable();
+                const { forecastForm, statusMessage, forecastResult } = components;
+                forecastForm.button.disable();
                 statusMessage.show('Fetching forecast data...', 'loading');
-                forecast.hide();
+                forecastResult.section.hide();
             };
 
             /**
@@ -1016,14 +1024,14 @@
              * @returns {Promise<Array<ForecastResult>|null>} Forecast results or null if error
              */
             const fetchForecast = async (request) => {
-                const { weatherService, statusMessage, submitButton } = components;
+                const { weatherService, statusMessage, forecastForm } = components;
                 try {
                     return await weatherService.forecast(request);
                 } catch (error) {
                     statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
                     return null;
                 } finally {
-                    submitButton.enable();
+                    forecastForm.button.enable();
                 }
             };
 
@@ -1034,11 +1042,11 @@
              * @returns {void}
              */
             const displayForecast = (request, results) => {
-                const { statusMessage, forecastHeader, forecastServices, forecast } = components;
+                const { statusMessage, forecastResult } = components;
                 statusMessage.hide();
-                forecastHeader.update(request);
-                forecastServices.render(results);
-                forecast.show();
+                forecastResult.header.update(request);
+                forecastResult.services.render(results);
+                forecastResult.section.show();
             };
 
             return {
@@ -1048,9 +1056,10 @@
                  * @returns {void}
                  */
                 setDefaultValues: () => {
-                    Object.values(components)
-                        .filter(component => component && typeof component.setDefaultValues === 'function')
-                        .forEach(component => component.setDefaultValues());
+                    const { forecastForm } = components;
+                    if (forecastForm.form.setDefaultValues) {
+                        forecastForm.form.setDefaultValues();
+                    }
                 },
                 /**
                  * Updates forecast with registered weather service
@@ -1075,20 +1084,26 @@
          * @returns {void}
          */
         const initializeApp = () => {
-            const forecastForm = createForecastForm(
-                document.getElementById('dateInput'),
-                document.getElementById('latitudeInput'),
-                document.getElementById('longitudeInput')
-            );
+            const forecastForm = {
+                form: createForecastForm(
+                    document.getElementById('dateInput'),
+                    document.getElementById('latitudeInput'),
+                    document.getElementById('longitudeInput')
+                ),
+                element: createFormElement(document.getElementById('forecastForm')),
+                button: createSubmitButton(formElement)
+            };
+
             const statusMessage = createStatusMessage(document.getElementById('statusMessage'));
-            const forecast = createForecastSection(document.getElementById('forecastResults'));
-            const forecastHeader = createForecastHeader(
-                document.getElementById('forecastLocation'),
-                document.getElementById('forecastDate')
-            );
-            const forecastServices = createForecastServices(document.getElementById('forecastServices'));
-            const formElement = createFormElement(document.getElementById('forecastForm'));
-            const submitButton = createSubmitButton(formElement);
+
+            const forecastResult = {
+                section: createForecastSection(document.getElementById('forecastResults')),
+                header: createForecastHeader(
+                    document.getElementById('forecastLocation'),
+                    document.getElementById('forecastDate')
+                ),
+                services: createForecastServices(document.getElementById('forecastServices'))
+            };
 
             const weatherService = createWeatherService([
                 createOpenMeteoService()
@@ -1097,16 +1112,13 @@
             const appState = createAppState({
                 forecastForm,
                 statusMessage,
-                forecast,
-                forecastHeader,
-                forecastServices,
-                submitButton,
+                forecastResult,
                 weatherService
             });
 
             appState.setDefaultValues();
 
-            formElement.onSubmit(appState.update);
+            forecastForm.element.onSubmit(appState.update);
         };
 
         if (document.readyState === 'loading') {
