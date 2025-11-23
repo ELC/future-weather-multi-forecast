@@ -1061,9 +1061,9 @@
                     showLoadingState();
                     
                     const results = await fetchForecast(request);
-                    if (!results) return;
-
-                    displayForecast(request, results);
+                    if (results) {
+                        displayForecast(request, results);
+                    }
                 }
             };
         };
