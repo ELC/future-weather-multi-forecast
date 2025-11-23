@@ -479,13 +479,67 @@
             const name = 'Open-Meteo';
 
             /**
+             * Maps WMO weather codes to descriptions
+             * @param {number} code - WMO weather code
+             * @returns {string} Weather description
+             */
+            const getWeatherDescription = (code) => {
+                return WMO_WEATHER_DESCRIPTIONS[code] || 'Unknown';
+            };
+
+            /**
+             * Maps WMO weather codes to icons
+             * @param {number} code - WMO weather code
+             * @returns {string} Weather icon
+             */
+            const getWeatherIcon = (code) => {
+                const iconMapping = WMO_WEATHER_ICONS.find(mapping => code <= mapping.max);
+                return iconMapping ? iconMapping.icon : '❓';
+            };
+
+            /**
+             * Creates empty weather data object
+             * @returns {WeatherData} Empty weather data
+             */
+            const createEmptyWeatherData = () => ({
+                temperature: 0,
+                temperatureFahrenheit: 0,
+                description: 'N/A',
+                humidity: 0,
+                windSpeed: 0,
+                precipitation: 0,
+                icon: '❓'
+            });
+
+            /**
+             * Transforms Open-Meteo API response to WeatherData
+             * @param {Object} daily - Daily weather data from API
+             * @returns {WeatherData} Transformed weather data
+             */
+            const transformOpenMeteoData = (daily) => {
+                const tempMax = daily.temperature_2m_max[0];
+                const tempMin = daily.temperature_2m_min[0];
+                const avgTemp = (tempMax + tempMin) / 2;
+                const weatherCode = daily.weathercode[0];
+                
+                return {
+                    temperature: Math.round(avgTemp * 10) / 10,
+                    temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
+                    description: getWeatherDescription(weatherCode),
+                    humidity: 0, // Not available in daily forecast
+                    windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
+                    precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
+                    icon: getWeatherIcon(weatherCode)
+                };
+            };
+
+            /**
              * Fetches forecast from Open-Meteo API
              * @param {ForecastRequest} request - Forecast request parameters
              * @returns {Promise<ForecastResult>} Forecast result
              */
             const fetchForecast = async ({ date, coordinates: { latitude, longitude } }) => {
                 try {
-                    
                     const url = new URL('https://api.open-meteo.com/v1/forecast');
                     url.searchParams.append('latitude', latitude.toString());
                     url.searchParams.append('longitude', longitude.toString());
@@ -524,63 +578,11 @@
                 }
             };
 
-            return { name, fetchForecast };
-        };
-
-        /**
-         * Transforms Open-Meteo API response to WeatherData
-         * @param {Object} daily - Daily weather data from API
-         * @returns {WeatherData} Transformed weather data
-         */
-        const transformOpenMeteoData = (daily) => {
-            const tempMax = daily.temperature_2m_max[0];
-            const tempMin = daily.temperature_2m_min[0];
-            const avgTemp = (tempMax + tempMin) / 2;
-            const weatherCode = daily.weathercode[0];
-            
             return {
-                temperature: Math.round(avgTemp * 10) / 10,
-                temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
-                description: getWeatherDescription(weatherCode),
-                humidity: 0, // Not available in daily forecast
-                windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
-                precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
-                icon: getWeatherIcon(weatherCode)
+                name,
+                fetchForecast
             };
         };
-
-        /**
-         * Maps WMO weather codes to descriptions
-         * @param {number} code - WMO weather code
-         * @returns {string} Weather description
-         */
-        const getWeatherDescription = (code) => {
-            return WMO_WEATHER_DESCRIPTIONS[code] || 'Unknown';
-        };
-
-        /**
-         * Maps WMO weather codes to icons
-         * @param {number} code - WMO weather code
-         * @returns {string} Weather icon
-         */
-        const getWeatherIcon = (code) => {
-            const iconMapping = WMO_WEATHER_ICONS.find(mapping => code <= mapping.max);
-            return iconMapping ? iconMapping.icon : '❓';
-        };
-
-        /**
-         * Creates empty weather data object
-         * @returns {WeatherData} Empty weather data
-         */
-        const createEmptyWeatherData = () => ({
-            temperature: 0,
-            temperatureFahrenheit: 0,
-            description: 'N/A',
-            humidity: 0,
-            windSpeed: 0,
-            precipitation: 0,
-            icon: '❓'
-        });
 
         // ========================================
         // Business Logic - Forecast Aggregator
