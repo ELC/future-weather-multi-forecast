@@ -425,6 +425,16 @@
          * @property {Array<number>} precipitation_sum - Precipitation sums in mm
          */
 
+        /**
+         * @typedef {Object} OpenMeteoApiResponse
+         * @property {OpenMeteoDailyData} daily - Daily weather data
+         * @property {Array<string>} [time] - Time array for the daily data
+         */
+
+        /**
+         * @typedef {{data: OpenMeteoApiResponse} | {error: string}} JsonResult
+         */
+
         // ========================================
         // Constants
         // ========================================
@@ -548,12 +558,12 @@
                     return url.toString();
                 },
                 /**
-                 * Fetches data from API
+                 * Fetches and parses JSON from API
                  * @param {string} url - API URL
-                 * @returns {Promise<{data: Response} | {error: string}>} Fetch result
+                 * @returns {Promise<JsonResult>} Parsed JSON result or error
                  */
-                fetchFromApi: async (url) => {
-                    const response = await fetch(url).catch(error => null);
+                fetchAndParseJson: async (url) => {
+                    const response = await fetch(url).catch(() => null);
                     
                     if (!response) {
                         return { error: 'Network error occurred' };
@@ -563,14 +573,6 @@
                         return { error: `HTTP error! status: ${response.status}` };
                     }
                     
-                    return { data: response };
-                },
-                /**
-                 * Parses JSON response
-                 * @param {Response} response - Fetch response
-                 * @returns {Promise<{data: any} | {error: string}>} Parse result
-                 */
-                parseResponse: async (response) => {
                     const json = await response.json().catch(() => null);
                     
                     if (!json) {
@@ -581,8 +583,8 @@
                 },
                 /**
                  * Validates API response data
-                 * @param {any} json - Parsed JSON
-                 * @returns {{data: any} | {error: string}} Validation result
+                 * @param {OpenMeteoApiResponse} json - Parsed JSON from Open-Meteo API
+                 * @returns {{data: OpenMeteoDailyData} | {error: string}} Validation result
                  */
                 validateResponseData: (json) => {
                     if (!json.daily || !json.daily.time || json.daily.time.length === 0) {
@@ -625,17 +627,12 @@
                 fetchForecast: async function({ date, coordinates: { latitude, longitude } }) {
                     const url = this.buildApiUrl(date, latitude, longitude);
                     
-                    const fetchResult = await this.fetchFromApi(url);
-                    if ('error' in fetchResult) {
-                        return this.createErrorResult(fetchResult.error);
+                    const jsonResult = await this.fetchAndParseJson(url);
+                    if ('error' in jsonResult) {
+                        return this.createErrorResult(jsonResult.error);
                     }
                     
-                    const parseResult = await this.parseResponse(fetchResult.data);
-                    if ('error' in parseResult) {
-                        return this.createErrorResult(parseResult.error);
-                    }
-                    
-                    const validationResult = this.validateResponseData(parseResult.data);
+                    const validationResult = this.validateResponseData(jsonResult.data);
                     if ('error' in validationResult) {
                         return this.createErrorResult(validationResult.error);
                     }
