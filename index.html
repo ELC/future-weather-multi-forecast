@@ -340,7 +340,7 @@
                         required
                     >
                 </div>
-                <button type="submit" class="forecast-form__button">Get Forecast</button>
+                <button id="submitButton" type="submit" class="forecast-form__button">Get Forecast</button>
             </form>
         </section>
 
@@ -781,10 +781,10 @@
          * @param {HTMLInputElement} dateInput - Date input element
          * @param {HTMLInputElement} latitudeInput - Latitude input element
          * @param {HTMLInputElement} longitudeInput - Longitude input element
+         * @param {HTMLButtonElement} buttonElement - Submit button element
          * @returns {ForecastFormComponent} Forecast form component
          */
-        const createForecastFormComponent = (formElement, dateInput, latitudeInput, longitudeInput) => {
-            const buttonElement = formElement.querySelector('.forecast-form__button');
+        const createForecastFormComponent = (formElement, dateInput, latitudeInput, longitudeInput, buttonElement) => {
 
             /**
              * Validates form values
@@ -1070,7 +1070,8 @@
                 document.getElementById('forecastForm'),
                 document.getElementById('dateInput'),
                 document.getElementById('latitudeInput'),
-                document.getElementById('longitudeInput')
+                document.getElementById('longitudeInput'),
+                document.getElementById('submitButton')
             );
 
             const statusMessage = createStatusMessage(document.getElementById('statusMessage'));
