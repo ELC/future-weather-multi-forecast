@@ -596,30 +596,6 @@
                 return { data: json.daily };
             };
 
-            /**
-             * Creates success result
-             * @param {WeatherData} data - Weather data
-             * @returns {ForecastResult} Success result
-             */
-            const createSuccessResult = (data) => {
-                return {
-                    serviceName: name,
-                    data
-                };
-            };
-
-            /**
-             * Creates error result
-             * @param {string} error - Error message
-             * @returns {ForecastResult} Error result
-             */
-            const createErrorResult = (error) => {
-                return {
-                    serviceName: name,
-                    error
-                };
-            };
-
             return {
                 name,
                 /**
@@ -632,16 +608,25 @@
                     
                     const jsonResult = await fetchAndParseJson(url);
                     if ('error' in jsonResult) {
-                        return createErrorResult(jsonResult.error);
+                        return {
+                            serviceName: name,
+                            error: jsonResult.error
+                        };
                     }
                     
                     const validationResult = validateResponseData(jsonResult.data);
                     if ('error' in validationResult) {
-                        return createErrorResult(validationResult.error);
+                        return {
+                            serviceName: name,
+                            error: validationResult.error
+                        };
                     }
                     
                     const weatherData = transformOpenMeteoData(validationResult.data);
-                    return createSuccessResult(weatherData);
+                    return {
+                        serviceName: name,
+                        data: weatherData
+                    };
                 }
             };
         };
