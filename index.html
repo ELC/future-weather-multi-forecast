@@ -541,46 +541,46 @@
                 /**
                  * Fetches data from API
                  * @param {string} url - API URL
-                 * @returns {Promise<{ok: boolean, value?: Response, error?: string}>} Fetch result
+                 * @returns {Promise<{data: Response} | {error: string}>} Fetch result
                  */
                 fetchFromApi: async (url) => {
                     const response = await fetch(url).catch(error => null);
                     
                     if (!response) {
-                        return { ok: false, error: 'Network error occurred' };
+                        return { error: 'Network error occurred' };
                     }
                     
                     if (!response.ok) {
-                        return { ok: false, error: `HTTP error! status: ${response.status}` };
+                        return { error: `HTTP error! status: ${response.status}` };
                     }
                     
-                    return { ok: true, value: response };
+                    return { data: response };
                 },
                 /**
                  * Parses JSON response
                  * @param {Response} response - Fetch response
-                 * @returns {Promise<{ok: boolean, value?: any, error?: string}>} Parse result
+                 * @returns {Promise<{data: any} | {error: string}>} Parse result
                  */
                 parseResponse: async (response) => {
                     const json = await response.json().catch(() => null);
                     
                     if (!json) {
-                        return { ok: false, error: 'Failed to parse response' };
+                        return { error: 'Failed to parse response' };
                     }
                     
-                    return { ok: true, value: json };
+                    return { data: json };
                 },
                 /**
                  * Validates API response data
                  * @param {any} json - Parsed JSON
-                 * @returns {{ok: boolean, value?: any, error?: string}} Validation result
+                 * @returns {{data: any} | {error: string}} Validation result
                  */
                 validateResponseData: (json) => {
                     if (!json.daily || !json.daily.time || json.daily.time.length === 0) {
-                        return { ok: false, error: 'No data available for the selected date' };
+                        return { error: 'No data available for the selected date' };
                     }
                     
-                    return { ok: true, value: json.daily };
+                    return { data: json.daily };
                 },
                 /**
                  * Creates success result
@@ -617,22 +617,22 @@
                     const url = this.buildApiUrl(date, latitude, longitude);
                     
                     const fetchResult = await this.fetchFromApi(url);
-                    if (!fetchResult.ok) {
+                    if ('error' in fetchResult) {
                         return this.createErrorResult(fetchResult.error);
                     }
                     
-                    const parseResult = await this.parseResponse(fetchResult.value);
-                    if (!parseResult.ok) {
+                    const parseResult = await this.parseResponse(fetchResult.data);
+                    if ('error' in parseResult) {
                         return this.createErrorResult(parseResult.error);
                     }
                     
-                    const validationResult = this.validateResponseData(parseResult.value);
-                    if (!validationResult.ok) {
+                    const validationResult = this.validateResponseData(parseResult.data);
+                    if ('error' in validationResult) {
                         return this.createErrorResult(validationResult.error);
                     }
                     
-                    const data = this.transformOpenMeteoData(validationResult.value);
-                    return this.createSuccessResult(data);
+                    const weatherData = this.transformOpenMeteoData(validationResult.data);
+                    return this.createSuccessResult(weatherData);
                 }
             };
         };
