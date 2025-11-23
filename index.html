@@ -396,7 +396,7 @@
          */
 
         /**
-         * @typedef {Object} WeatherService
+         * @typedef {Object} WeatherProvider
          * @property {string} name - Name of the weather service
          * @property {(request: ForecastRequest) => Promise<ForecastResult>} fetchForecast - Function to fetch forecast
          */
@@ -473,7 +473,7 @@
 
         /**
          * Creates a weather service for Open-Meteo API
-         * @returns {WeatherService} Weather service implementation
+         * @returns {WeatherProvider} Weather provider implementation
          */
         const createOpenMeteoService = () => {
             const name = 'Open-Meteo';
@@ -587,16 +587,16 @@
         // ========================================
 
         /**
-         * @typedef {Object} WeatherProviders
+         * @typedef {Object} WeatherService
          * @property {(request: ForecastRequest) => Promise<Array<ForecastResult>>} forecast - Fetches forecasts from all providers
          */
 
         /**
-         * Creates a weather providers object with multiple forecast services
-         * @param {Array<WeatherService>} providers - Array of weather service providers
-         * @returns {WeatherProviders} Weather providers object with forecast method
+         * Creates a weather service object with multiple forecast providers
+         * @param {Array<WeatherProvider>} providers - Array of weather providers
+         * @returns {WeatherService} Weather service object with forecast method
          */
-        const createWeatherProviders = (providers) => {
+        const createWeatherService = (providers) => {
             return {
                 forecast: async (request) => {
                     const promises = providers.map(provider => provider.fetchForecast(request));
@@ -882,10 +882,10 @@
         /**
          * Creates form submit handler with dependencies
          * @param {AppState} appState - Application state
-         * @param {WeatherProviders} weatherProviders - Weather providers
+         * @param {WeatherService} weatherService - Weather service
          * @returns {(event: Event) => Promise<void>} Form submit handler
          */
-        const createFormSubmitHandler = (appState, weatherProviders) => {
+        const createFormSubmitHandler = (appState, weatherService) => {
             /**
              * Handles form submission
              * @param {Event} event - Form submit event
@@ -919,7 +919,7 @@
 
                 try {
                     // Fetch forecasts from all providers
-                    const results = await weatherProviders.forecast(request);
+                    const results = await weatherService.forecast(request);
 
                     // Hide loading status
                     statusMessage.hide();
@@ -1001,8 +1001,8 @@
                 submitButton
             });
 
-            // Initialize weather providers
-            const weatherProviders = createWeatherProviders([
+            // Initialize weather service
+            const weatherService = createWeatherService([
                 createOpenMeteoService()
                 // Additional services can be added here:
                 // createWeatherAPIService(),
@@ -1013,7 +1013,7 @@
             appState.setDefaultValues();
 
             // Create and attach form submit handler
-            const handleFormSubmit = createFormSubmitHandler(appState, weatherProviders);
+            const handleFormSubmit = createFormSubmitHandler(appState, weatherService);
             formElement.addEventListener('submit', handleFormSubmit);
         };
 
