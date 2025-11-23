@@ -194,6 +194,14 @@
             box-shadow: var(--shadow);
         }
 
+        .weather-card:nth-child(2) {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+
+        .weather-card:nth-child(3) {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
         .weather-card__header {
             display: flex;
             justify-content: space-between;
@@ -500,8 +508,51 @@
          */
 
         /**
-         * @typedef {{data: OpenMeteoApiResponse} | {error: string}} JsonResult
-         * Result of JSON fetch and parse operation
+         * @typedef {{data: OpenMeteoApiResponse} | {error: string}} OpenMeteoJsonResult
+         * Result of JSON fetch and parse operation for Open-Meteo API
+         */
+
+        /**
+         * @typedef {{data: OpenMeteoDailyData} | {error: string}} OpenMeteoValidationResult
+         * Result of Open-Meteo validation - either daily weather data or error
+         */
+
+        // --- Wttr.in API Types ---
+
+        /**
+         * @typedef {Object} WttrinWeatherDescription
+         * @property {string} value - Weather description text
+         */
+
+        /**
+         * @typedef {Object} WttrinHourlyData
+         * @property {string} windspeedKmph - Wind speed in km/h as string
+         * @property {string} precipMM - Precipitation in mm as string
+         * @property {string} humidity - Humidity percentage as string
+         * @property {Array<WttrinWeatherDescription>} weatherDesc - Array of weather descriptions
+         */
+
+        /**
+         * @typedef {Object} WttrinDailyWeather
+         * @property {string} [avgtempC] - Average temperature in Celsius as string
+         * @property {string} [maxtempC] - Maximum temperature in Celsius as string
+         * @property {string} [mintempC] - Minimum temperature in Celsius as string
+         * @property {Array<WttrinHourlyData>} [hourly] - Hourly weather data array
+         */
+
+        /**
+         * @typedef {Object} WttrinApiResponse
+         * @property {Array<WttrinDailyWeather>} weather - Array of daily weather data
+         */
+
+        /**
+         * @typedef {{data: WttrinApiResponse} | {error: string}} WttrinJsonResult
+         * Result of JSON fetch and parse operation for wttr.in API
+         */
+
+        /**
+         * @typedef {{data: WttrinDailyWeather} | {error: string}} WttrinValidationResult
+         * Result of wttr.in validation - either a single day's weather data or error
          */
 
         // --- Geocoding API Types ---
@@ -778,7 +829,7 @@
 
             /**
              * Transforms validation result to ForecastResult
-             * @param {{data: OpenMeteoDailyData} | {error: string}} validationResult - Validation result from API response
+             * @param {OpenMeteoValidationResult} validationResult - Validation result from API response
              * @returns {ForecastResult} Complete forecast result with service name
              */
             const transformOpenMeteoData = (validationResult) => {
@@ -833,7 +884,7 @@
             /**
              * Fetches and parses JSON from API
              * @param {string} url - API URL
-             * @returns {Promise<JsonResult>} Parsed JSON result or error
+             * @returns {Promise<OpenMeteoJsonResult>} Parsed JSON result or error
              */
             const fetchAndParseJson = async (url) => {
                 const response = await fetch(url).catch(() => null);
@@ -857,8 +908,8 @@
 
             /**
              * Validates API response data
-             * @param {JsonResult} json - Parsed JSON from Open-Meteo API
-             * @returns {{data: OpenMeteoDailyData} | {error: string}} Validation result
+             * @param {OpenMeteoJsonResult} json - Parsed JSON from Open-Meteo API
+             * @returns {OpenMeteoValidationResult} Validation result
              */
             const validateResponseData = (json) => {
                 if ("error" in json && json.error) {
@@ -884,6 +935,135 @@
                     const jsonResult = await fetchAndParseJson(url);
                     const validationResult = validateResponseData(jsonResult);
                     return transformOpenMeteoData(validationResult);
+                }
+            };
+        };
+
+        /**
+         * Creates a weather service for wttr.in API
+         * @returns {WeatherProvider} Weather provider implementation
+         */
+        const createWttrinService = () => {
+            const name = 'Wttr.in';
+
+            /**
+             * Maps weather description to appropriate icon
+             * @param {string} description - Weather description from API
+             * @returns {string} Weather icon
+             */
+            const getWeatherIcon = (description) => {
+                const desc = description.toLowerCase();
+                if (desc.includes('clear') || desc.includes('sunny')) return '☀️';
+                if (desc.includes('partly cloudy') || desc.includes('partly')) return '⛅';
+                if (desc.includes('cloudy') || desc.includes('overcast')) return '☁️';
+                if (desc.includes('fog') || desc.includes('mist')) return '🌫️';
+                if (desc.includes('drizzle')) return '🌦️';
+                if (desc.includes('rain') || desc.includes('shower')) return '🌧️';
+                if (desc.includes('snow') || desc.includes('sleet')) return '❄️';
+                if (desc.includes('thunder') || desc.includes('storm')) return '⛈️';
+                return '🌤️';
+            };
+
+            /**
+             * Builds API URL for weather request
+             * @param {number} latitude - Latitude coordinate
+             * @param {number} longitude - Longitude coordinate
+             * @param {string} date - Date string (YYYY-MM-DD)
+             * @returns {string} API URL
+             */
+            const buildApiUrl = (latitude, longitude, date) => {
+                // wttr.in supports format like: wttr.in/lat,lon?format=j1&date=YYYY-MM-DD
+                return `https://wttr.in/${latitude},${longitude}?format=j1&date=${date}`;
+            };
+
+            /**
+             * Fetches and parses JSON from API
+             * @param {string} url - API URL
+             * @returns {Promise<WttrinJsonResult>} Parsed JSON result or error
+             */
+            const fetchAndParseJson = async (url) => {
+                const response = await fetch(url).catch(() => null);
+                
+                if (!response) {
+                    return { error: 'Network error occurred' };
+                }
+                
+                if (!response.ok) {
+                    return { error: `HTTP error! status: ${response.status}` };
+                }
+                
+                const json = await response.json().catch(() => null);
+                
+                if (!json) {
+                    return { error: 'Failed to parse response' };
+                }
+                
+                return { data: json };
+            };
+
+            /**
+             * Validates and extracts weather data from API response
+             * @param {WttrinJsonResult} json - Parsed JSON from wttr.in API
+             * @returns {WttrinValidationResult} Validation result
+             */
+            const validateResponseData = (json) => {
+                if ("error" in json && json.error) {
+                    return { error: json.error };
+                }
+                
+                if (!("data" in json) || !("weather" in json.data) || !json.data.weather || json.data.weather.length === 0) {
+                    return { error: 'No data available for the selected date' };
+                }
+                
+                return { data: json.data.weather[0] };
+            };
+
+            /**
+             * Transforms wttr.in data to WeatherData format
+             * @param {WttrinValidationResult} validationResult - Validation result from API response
+             * @returns {ForecastResult} Complete forecast result with service name
+             */
+            const transformWttrinData = (validationResult) => {
+                if ('error' in validationResult) {
+                    return {
+                        serviceName: name,
+                        error: validationResult.error
+                    };
+                }
+                
+                const weather = validationResult.data;
+                const avgTempC = parseFloat(weather.avgtempC || weather.maxtempC || 0);
+                const maxWindSpeedKmph = parseFloat(weather.hourly?.[0]?.windspeedKmph || 0);
+                const precipMM = parseFloat(weather.hourly?.[0]?.precipMM || 0);
+                const humidity = parseFloat(weather.hourly?.[0]?.humidity || 0);
+                const description = weather.hourly?.[0]?.weatherDesc?.[0]?.value || 'Unknown';
+                
+                return {
+                    serviceName: name,
+                    data: {
+                        temperature: TemperatureUtils.roundToDecimal(avgTempC),
+                        temperatureFahrenheit: TemperatureUtils.roundToDecimal(TemperatureUtils.celsiusToFahrenheit(avgTempC)),
+                        description: description,
+                        humidity: TemperatureUtils.roundToDecimal(humidity),
+                        windSpeed: TemperatureUtils.roundToDecimal(maxWindSpeedKmph),
+                        precipitation: TemperatureUtils.roundToDecimal(precipMM),
+                        icon: getWeatherIcon(description)
+                    }
+                };
+            };
+
+            return {
+                name,
+                /**
+                 * Fetches forecast from wttr.in API
+                 * @param {ForecastRequest} request - Forecast request parameters
+                 * @returns {Promise<ForecastResult>} Forecast result
+                 */
+                fetchForecast: async ({ date, coordinates: { latitude, longitude } }) => {
+                    const url = buildApiUrl(latitude, longitude, date);
+                    const jsonResult = await fetchAndParseJson(url);
+                    const validationResult = validateResponseData(jsonResult);
+                    return transformWttrinData(validationResult);
                 }
             };
         };
@@ -963,7 +1143,7 @@
          */
         const createWeatherCardSuccessTemplate = ({ 
             serviceName, 
-            data: { temperature, temperatureFahrenheit, description, icon, windSpeed, precipitation } 
+            data: { temperature, temperatureFahrenheit, description, icon, windSpeed, precipitation, humidity } 
         }) => {
             return createElement(`
                 <article class="weather-card">
@@ -990,6 +1170,10 @@
                         <div class="weather-card__detail">
                             <span class="weather-card__detail-label">Precipitation</span>
                             <span class="weather-card__detail-value">${precipitation} mm</span>
+                        </div>
+                        <div class="weather-card__detail">
+                            <span class="weather-card__detail-label">Humidity</span>
+                            <span class="weather-card__detail-value">${humidity > 0 ? humidity + '%' : 'N/A'}</span>
                         </div>
                     </div>
                 </article>
@@ -1306,7 +1490,8 @@
             );
 
             const weatherService = createWeatherService([
-                createOpenMeteoService()
+                createOpenMeteoService(),
+                createWttrinService()
             ]);
 
             const appState = createAppState({
