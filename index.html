@@ -634,7 +634,8 @@
          */
         const showStatus = (element, message, type) => {
             element.textContent = message;
-            element.className = `status status--${type}`;
+            element.classList.remove('status--hidden', 'status--loading', 'status--error');
+            element.classList.add('status', `status--${type}`);
         };
 
         /**
@@ -643,7 +644,8 @@
          * @returns {void}
          */
         const hideStatus = (element) => {
-            element.className = 'status status--hidden';
+            element.classList.remove('status--loading', 'status--error');
+            element.classList.add('status--hidden');
         };
 
         /**
