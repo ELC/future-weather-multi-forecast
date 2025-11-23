@@ -388,11 +388,8 @@
          */
 
         /**
-         * @typedef {Object} ForecastResult
-         * @property {string} serviceName - Name of the weather service
-         * @property {WeatherData} data - Weather data
-         * @property {boolean} success - Whether the fetch was successful
-         * @property {string|null} error - Error message if failed
+         * @typedef {{serviceName: string, data: WeatherData} | {serviceName: string, error: string}} ForecastResult
+         * Success case has serviceName and data, error case has serviceName and error
          */
 
         /**
@@ -607,9 +604,7 @@
             const createSuccessResult = (data) => {
                 return {
                     serviceName: name,
-                    data,
-                    success: true,
-                    error: null
+                    data
                 };
             };
 
@@ -621,8 +616,6 @@
             const createErrorResult = (error) => {
                 return {
                     serviceName: name,
-                    data: emptyWeatherData,
-                    success: false,
                     error
                 };
             };
@@ -746,7 +739,7 @@
 
         /**
          * Creates weather card success element
-         * @param {ForecastResult} result - Forecast result with success state
+         * @param {{serviceName: string, data: WeatherData}} result - Forecast result with data
          * @returns {HTMLElement} Weather card element
          */
         const createWeatherCardSuccessTemplate = ({ 
@@ -786,7 +779,7 @@
 
         /**
          * Creates weather card error element
-         * @param {ForecastResult} result - Forecast result with error state
+         * @param {{serviceName: string, error: string}} result - Forecast result with error
          * @returns {HTMLElement} Weather card element
          */
         const createWeatherCardErrorTemplate = ({ serviceName, error }) => {
@@ -974,9 +967,9 @@
                  */
                 displayResults: (results) => {
                     const cardElements = results.map(result => 
-                        result.success 
-                            ? createWeatherCardSuccessTemplate(result)
-                            : createWeatherCardErrorTemplate(result)
+                        'error' in result
+                            ? createWeatherCardErrorTemplate(result)
+                            : createWeatherCardSuccessTemplate(result)
                     );
                     
                     servicesContainer.replaceChildren(...cardElements);
