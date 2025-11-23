@@ -947,12 +947,9 @@
             return {
                 ...components,
                 setDefaultValues: () => {
-                    // Call setDefaultValues on each component that has it
-                    Object.values(components).forEach(component => {
-                        if (component && typeof component.setDefaultValues === 'function') {
-                            component.setDefaultValues();
-                        }
-                    });
+                    Object.values(components)
+                        .filter(component => component && typeof component.setDefaultValues === 'function')
+                        .forEach(component => component.setDefaultValues());
                 }
             };
         };
