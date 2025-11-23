@@ -624,66 +624,75 @@
         // ========================================
 
         /**
-         * Shows status message
+         * @typedef {Object} StatusMessage
+         * @property {(message: string, type: 'loading'|'error') => void} show - Shows status message
+         * @property {() => void} hide - Hides status message
+         */
+
+        /**
+         * Creates a status message object with show/hide methods
          * @param {HTMLElement} element - Status message element
-         * @param {string} message - Message to display
-         * @param {'loading'|'error'} type - Status type
-         * @returns {void}
+         * @returns {StatusMessage} Status message object with methods
          */
-        const showStatus = (element, message, type) => {
-            element.textContent = message;
-            element.classList.remove('status--hidden', 'status--loading', 'status--error');
-            element.classList.add('status', `status--${type}`);
+        const createStatusMessage = (element) => {
+            return {
+                show: (message, type) => {
+                    element.textContent = message;
+                    element.classList.remove('status--hidden', 'status--loading', 'status--error');
+                    element.classList.add('status', `status--${type}`);
+                },
+                hide: () => {
+                    element.classList.remove('status--loading', 'status--error');
+                    element.classList.add('status--hidden');
+                }
+            };
         };
 
         /**
-         * Hides status message
-         * @param {HTMLElement} element - Status message element
-         * @returns {void}
+         * @typedef {Object} ForecastSection
+         * @property {() => void} show - Shows forecast section
+         * @property {() => void} hide - Hides forecast section
          */
-        const hideStatus = (element) => {
-            element.classList.remove('status--loading', 'status--error');
-            element.classList.add('status--hidden');
-        };
 
         /**
-         * Shows forecast section
+         * Creates a forecast section object with show/hide methods
          * @param {HTMLElement} element - Forecast section element
-         * @returns {void}
+         * @returns {ForecastSection} Forecast section object with methods
          */
-        const showForecast = (element) => {
-            element.classList.remove('forecast--hidden');
+        const createForecastSection = (element) => {
+            return {
+                show: () => {
+                    element.classList.remove('forecast--hidden');
+                },
+                hide: () => {
+                    element.classList.add('forecast--hidden');
+                }
+            };
         };
 
         /**
-         * Hides forecast section
-         * @param {HTMLElement} element - Forecast section element
-         * @returns {void}
-         */
-        const hideForecast = (element) => {
-            element.classList.add('forecast--hidden');
-        };
-
-        /**
-         * @typedef {Object} ForecastHeaderElements
-         * @property {HTMLElement} locationElement - Location display element
-         * @property {HTMLElement} dateElement - Date display element
+         * @typedef {Object} ForecastHeader
+         * @property {(request: ForecastRequest) => void} update - Updates forecast header with request data
          */
 
         /**
-         * Updates forecast header
-         * @param {ForecastHeaderElements} elements - Header elements
-         * @param {ForecastRequest} request - Forecast request data
-         * @returns {void}
+         * Creates a forecast header object with update method
+         * @param {HTMLElement} locationElement - Location display element
+         * @param {HTMLElement} dateElement - Date display element
+         * @returns {ForecastHeader} Forecast header object with methods
          */
-        const updateForecastHeader = ({ locationElement, dateElement }, { coordinates, date }) => {
-            locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
-            dateElement.textContent = new Date(date).toLocaleDateString('en-US', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
+        const createForecastHeader = (locationElement, dateElement) => {
+            return {
+                update: ({ coordinates, date }) => {
+                    locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
+                    dateElement.textContent = new Date(date).toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+            };
         };
 
         /**
@@ -814,12 +823,11 @@
          * @property {HTMLInputElement} dateInput - Date input element
          * @property {HTMLInputElement} latitudeInput - Latitude input element
          * @property {HTMLInputElement} longitudeInput - Longitude input element
-         * @property {HTMLElement} statusMessage - Status message element
-         * @property {HTMLElement} forecastResults - Forecast results section
-         * @property {HTMLElement} forecastLocation - Location display element
-         * @property {HTMLElement} forecastDate - Date display element
+         * @property {StatusMessage} statusMessage - Status message object
+         * @property {ForecastSection} forecast - Forecast section object
+         * @property {ForecastHeader} forecastHeader - Forecast header object
          * @property {HTMLElement} forecastServices - Services container element
-         * @property {HTMLButtonElement} submitButton - Submit button element
+         * @property {SubmitButton} submitButton - Submit button object
          */
 
         /**
@@ -842,9 +850,8 @@
                     latitudeInput,
                     longitudeInput,
                     statusMessage,
-                    forecastResults,
-                    forecastLocation,
-                    forecastDate,
+                    forecast,
+                    forecastHeader,
                     forecastServices,
                     submitButton
                 } = elements;
@@ -861,36 +868,33 @@
                 // Validate request
                 const validation = validateForecastRequest(request);
                 if (!validation.valid) {
-                    showStatus(statusMessage, validation.error, 'error');
+                    statusMessage.show(validation.error, 'error');
                     return;
                 }
 
                 // Show loading state
                 submitButton.disable();
-                showStatus(statusMessage, 'Fetching forecast data...', 'loading');
-                hideForecast(forecastResults);
+                statusMessage.show('Fetching forecast data...', 'loading');
+                forecast.hide();
 
                 try {
                     // Fetch forecasts from all services
                     const results = await fetchAllForecasts(request, weatherServices);
 
                     // Hide loading status
-                    hideStatus(statusMessage);
+                    statusMessage.hide();
 
                     // Update forecast header
-                    updateForecastHeader(
-                        { locationElement: forecastLocation, dateElement: forecastDate },
-                        request
-                    );
+                    forecastHeader.update(request);
 
                     // Render results
                     renderForecastResults(forecastServices, results);
 
                     // Show forecast section
-                    showForecast(forecastResults);
+                    forecast.show();
 
                 } catch (error) {
-                    showStatus(statusMessage, `Failed to fetch forecast: ${error.message}`, 'error');
+                    statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
                 } finally {
                     submitButton.enable();
                 }
@@ -923,11 +927,15 @@
             const dateInput = document.getElementById('dateInput');
             const latitudeInput = document.getElementById('latitudeInput');
             const longitudeInput = document.getElementById('longitudeInput');
-            const statusMessage = document.getElementById('statusMessage');
-            const forecastResults = document.getElementById('forecastResults');
-            const forecastLocation = document.getElementById('forecastLocation');
-            const forecastDate = document.getElementById('forecastDate');
             const forecastServices = document.getElementById('forecastServices');
+            
+            // Create UI component objects
+            const statusMessage = createStatusMessage(document.getElementById('statusMessage'));
+            const forecast = createForecastSection(document.getElementById('forecastResults'));
+            const forecastHeader = createForecastHeader(
+                document.getElementById('forecastLocation'),
+                document.getElementById('forecastDate')
+            );
             const submitButton = createSubmitButton(form.querySelector('.forecast-form__button'));
 
             const elements = {
@@ -935,9 +943,8 @@
                 latitudeInput,
                 longitudeInput,
                 statusMessage,
-                forecastResults,
-                forecastLocation,
-                forecastDate,
+                forecast,
+                forecastHeader,
                 forecastServices,
                 submitButton
             };
