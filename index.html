@@ -906,6 +906,17 @@
         };
 
         /**
+         * @typedef {Object} AppStateComponents
+         * @property {ForecastForm} form - Forecast form object
+         * @property {StatusMessage} statusMessage - Status message object
+         * @property {ForecastSection} forecast - Forecast section object
+         * @property {ForecastHeader} forecastHeader - Forecast header object
+         * @property {ForecastServices} forecastServices - Forecast services object
+         * @property {SubmitButton} submitButton - Submit button object
+         * @property {WeatherService} weatherService - Weather service object
+         */
+
+        /**
          * @typedef {Object} AppState
          * @property {ForecastForm} form - Forecast form object
          * @property {StatusMessage} statusMessage - Status message object
@@ -920,7 +931,7 @@
 
         /**
          * Creates application state object with UI components
-         * @param {Object} components - UI components including weather service
+         * @param {AppStateComponents} components - UI components including weather service
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
