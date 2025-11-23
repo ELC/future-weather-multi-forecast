@@ -883,7 +883,7 @@
         /**
          * @typedef {Object} FormElement
          * @property {HTMLButtonElement} button - Form submit button element
-         * @property {(appState: AppState) => void} registerAppState - Registers app state and sets up form submission
+         * @property {(onSubmit: () => Promise<void>) => void} onSubmit - Registers submit callback handler
          */
 
         /**
@@ -894,10 +894,10 @@
         const createFormElement = (element) => {
             return {
                 button: element.querySelector('.forecast-form__button'),
-                registerAppState: (appState) => {
+                onSubmit: (callback) => {
                     const handleSubmit = async (event) => {
                         event.preventDefault();
-                        await appState.update();
+                        await callback();
                     };
 
                     element.addEventListener('submit', handleSubmit);
@@ -1028,8 +1028,8 @@
             appState.setDefaultValues();
             appState.registerWeatherService(weatherService);
 
-            // Register app state with form
-            formElement.registerAppState(appState);
+            // Register update callback with form
+            formElement.onSubmit(() => appState.update());
         };
 
         // Initialize app when DOM is ready
