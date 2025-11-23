@@ -263,6 +263,11 @@
             font-weight: 500;
         }
 
+        .weather-card__error {
+            opacity: 0.8;
+            margin-top: 1rem;
+        }
+
         /* Responsive Design */
         @media (max-width: 768px) {
             .dashboard {
@@ -361,8 +366,87 @@
 
     <script>
         // ========================================
+        // Configuration
+        // ========================================
+
+        /**
+         * Application configuration constants
+         * @type {Object}
+         */
+        const CONFIG = {
+            DEFAULT_LOCATION: {
+                latitude: 40.7128,
+                longitude: -74.0060,
+                name: 'New York, NY'
+            },
+            OPEN_METEO: {
+                API_URL: 'https://api.open-meteo.com/v1/forecast',
+                DAILY_PARAMS: ['temperature_2m_max', 'temperature_2m_min', 'weathercode', 'precipitation_sum', 'windspeed_10m_max']
+            },
+            VALIDATION: {
+                LATITUDE_MIN: -90,
+                LATITUDE_MAX: 90,
+                LONGITUDE_MIN: -180,
+                LONGITUDE_MAX: 180
+            },
+            FORMATTING: {
+                COORDINATE_DECIMALS: 4,
+                TEMPERATURE_DECIMALS: 1
+            }
+        };
+
+        // ========================================
+        // Utility Functions
+        // ========================================
+
+        /**
+         * Temperature conversion utilities
+         * @type {Object}
+         */
+        const TemperatureUtils = {
+            /**
+             * Converts Celsius to Fahrenheit
+             * @param {number} celsius - Temperature in Celsius
+             * @returns {number} Temperature in Fahrenheit
+             */
+            celsiusToFahrenheit: (celsius) => (celsius * 9/5 + 32),
+
+            /**
+             * Rounds a number to specified decimal places
+             * @param {number} value - Value to round
+             * @param {number} decimals - Number of decimal places
+             * @returns {number} Rounded value
+             */
+            roundToDecimal: (value, decimals = CONFIG.FORMATTING.TEMPERATURE_DECIMALS) => {
+                const factor = Math.pow(10, decimals);
+                return Math.round(value * factor) / factor;
+            }
+        };
+
+        /**
+         * Coordinate formatting utilities
+         * @type {Object}
+         */
+        const CoordinateUtils = {
+            /**
+             * Formats coordinates with proper directional indicators
+             * @param {Coordinates} coordinates - Latitude and longitude
+             * @param {number} decimals - Number of decimal places
+             * @returns {string} Formatted coordinate string
+             */
+            format: ({ latitude, longitude }, decimals = CONFIG.FORMATTING.COORDINATE_DECIMALS) => {
+                const latDir = latitude >= 0 ? 'N' : 'S';
+                const lonDir = longitude >= 0 ? 'E' : 'W';
+                return `${Math.abs(latitude).toFixed(decimals)}°${latDir}, ${Math.abs(longitude).toFixed(decimals)}°${lonDir}`;
+            }
+        };
+
+
+        // ========================================
         // Type Definitions
         // ========================================
+
+        // --- Core Data Types ---
 
         /**
          * @typedef {Object} Coordinates
@@ -377,6 +461,11 @@
          */
 
         /**
+         * @typedef {{data: ForecastRequest} | {error: string}} ForecastRequestResult
+         * Result of forecast request validation - either valid data or error message
+         */
+
+        /**
          * @typedef {Object} WeatherData
          * @property {number} temperature - Temperature in Celsius
          * @property {number} temperatureFahrenheit - Temperature in Fahrenheit
@@ -387,31 +476,25 @@
          * @property {string} icon - Weather icon representation
          */
 
+        // --- Weather Provider Types ---
+
         /**
          * @typedef {{serviceName: string, data: WeatherData} | {serviceName: string, error: string}} ForecastResult
-         * Success case has serviceName and data, error case has serviceName and error
+         * Forecast result from a provider - success case has data, error case has error message
          */
 
         /**
          * @typedef {Object} WeatherProvider
          * @property {string} name - Name of the weather service
-         * @property {(request: ForecastRequest) => Promise<ForecastResult>} fetchForecast - Function to fetch forecast
-         */
-
-        // ========================================
-        // Constants Type Definitions
-        // ========================================
-
-        /**
-         * @typedef {Object.<number, string>} WeatherDescriptionMap
-         * Mapping of WMO weather codes to their descriptions
+         * @property {(request: ForecastRequest) => Promise<ForecastResult>} fetchForecast - Fetches forecast for given request
          */
 
         /**
-         * @typedef {Object} WeatherIconMapping
-         * @property {number} max - Maximum weather code for this icon
-         * @property {string} icon - Weather icon emoji
+         * @typedef {Object} WeatherService
+         * @property {(request: ForecastRequest) => Promise<Array<ForecastResult>>} forecast - Fetches forecasts from all providers
          */
+
+        // --- Open-Meteo API Types ---
 
         /**
          * @typedef {Object} OpenMeteoDailyData
@@ -430,6 +513,60 @@
 
         /**
          * @typedef {{data: OpenMeteoApiResponse} | {error: string}} JsonResult
+         * Result of JSON fetch and parse operation
+         */
+
+        // --- Constants Types ---
+
+        /**
+         * @typedef {Object.<number, string>} WeatherDescriptionMap
+         * Mapping of WMO weather codes to their descriptions
+         */
+
+        /**
+         * @typedef {Object} WeatherIconMapping
+         * @property {number} max - Maximum weather code for this icon
+         * @property {string} icon - Weather icon emoji
+         */
+
+        // --- Component Types ---
+
+        /**
+         * @typedef {Object} StatusMessage
+         * @property {(message: string, type: 'loading'|'error') => void} show - Shows status message
+         * @property {() => void} hide - Hides status message
+         */
+
+        /**
+         * @typedef {Object} ForecastFormComponent
+         * @property {() => ForecastRequestResult} createRequest - Creates and validates forecast request
+         * @property {() => void} setDefaultValues - Sets default form values
+         * @property {() => void} disable - Disables form submission
+         * @property {() => void} enable - Enables form submission
+         * @property {(callback: () => Promise<void>) => void} onSubmit - Registers form submit handler
+         */
+
+        /**
+         * @typedef {Object} ForecastResultComponent
+         * @property {() => void} show - Shows forecast section
+         * @property {() => void} hide - Hides forecast section
+         * @property {(request: ForecastRequest) => void} displayInfo - Displays forecast location and date
+         * @property {(results: Array<ForecastResult>) => void} displayResults - Displays weather results
+         */
+
+        /**
+         * @typedef {Object} AppStateComponents
+         * @property {ForecastFormComponent} forecastForm - Forecast form component
+         * @property {StatusMessage} statusMessage - Status message component
+         * @property {ForecastResultComponent} forecastResult - Forecast result component
+         * @property {WeatherService} weatherService - Weather service
+         */
+
+        /**
+         * @typedef {Object} AppState
+         * @property {() => void} setDefaultValues - Sets default values for all components
+         * @property {() => void} initialize - Initializes the application
+         * @property {() => Promise<void>} update - Updates forecast with registered weather service
          */
 
         // ========================================
@@ -526,12 +663,12 @@
                 return {
                     serviceName: name,
                     data: {
-                        temperature: Math.round(avgTemp * 10) / 10,
-                        temperatureFahrenheit: Math.round((avgTemp * 9/5 + 32) * 10) / 10,
+                        temperature: TemperatureUtils.roundToDecimal(avgTemp),
+                        temperatureFahrenheit: TemperatureUtils.roundToDecimal(TemperatureUtils.celsiusToFahrenheit(avgTemp)),
                         description: WMO_WEATHER_DESCRIPTIONS[weatherCode] || 'Unknown',
                         humidity: 0,
-                        windSpeed: Math.round(daily.windspeed_10m_max[0] * 10) / 10,
-                        precipitation: Math.round(daily.precipitation_sum[0] * 10) / 10,
+                        windSpeed: TemperatureUtils.roundToDecimal(daily.windspeed_10m_max[0]),
+                        precipitation: TemperatureUtils.roundToDecimal(daily.precipitation_sum[0]),
                         icon: getWeatherIcon(weatherCode)
                     }
                 };
@@ -545,13 +682,16 @@
              * @returns {string} API URL
              */
             const buildApiUrl = (date, latitude, longitude) => {
-                const url = new URL('https://api.open-meteo.com/v1/forecast');
-                url.searchParams.append('latitude', latitude.toString());
-                url.searchParams.append('longitude', longitude.toString());
-                url.searchParams.append('daily', 'temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum,windspeed_10m_max');
-                url.searchParams.append('timezone', 'auto');
-                url.searchParams.append('start_date', date);
-                url.searchParams.append('end_date', date);
+                const url = new URL(CONFIG.OPEN_METEO.API_URL);
+                const params = {
+                    latitude: latitude.toString(),
+                    longitude: longitude.toString(),
+                    daily: CONFIG.OPEN_METEO.DAILY_PARAMS.join(','),
+                    timezone: 'auto',
+                    start_date: date,
+                    end_date: date
+                };
+                Object.entries(params).forEach(([key, value]) => url.searchParams.append(key, value));
                 return url.toString();
             };
 
@@ -582,15 +722,15 @@
 
             /**
              * Validates API response data
-             * @param {OpenMeteoApiResponse} json - Parsed JSON from Open-Meteo API
+             * @param {JsonResult} json - Parsed JSON from Open-Meteo API
              * @returns {{data: OpenMeteoDailyData} | {error: string}} Validation result
              */
             const validateResponseData = (json) => {
-                if (json.error) {
+                if ("error" in json && json.error) {
                     return { error: json.error };
                 }
                 
-                if (!json.daily || !json.daily.time || json.daily.time.length === 0) {
+                if (!("data" in json) || !("daily" in json.data) || !("time" in json.data.daily) || json.data.daily.time.length === 0) {
                     return { error: 'No data available for the selected date' };
                 }
                 
@@ -618,11 +758,6 @@
         // ========================================
 
         /**
-         * @typedef {Object} WeatherService
-         * @property {(request: ForecastRequest) => Promise<Array<ForecastResult>>} forecast - Fetches forecasts from all providers
-         */
-
-        /**
          * Creates a weather service object with multiple forecast providers
          * @param {Array<WeatherProvider>} providers - Array of weather providers
          * @returns {WeatherService} Weather service object with forecast method
@@ -641,27 +776,9 @@
             };
         };
 
-        /**
-         * @typedef {{data: ForecastRequest} | {error: string}} ForecastRequestResult
-         */
-
-        /**
-         * @typedef {Object} ForecastForm
-         * @property {() => ForecastRequestResult} createRequest - Creates and validates forecast request
-         * @property {() => {valid: boolean, error: string|null}} validate - Validates form values
-         * @property {() => void} setDefaultValues - Sets default form values
-         */
-
-
         // ========================================
         // View Layer - DOM Manipulation
         // ========================================
-
-        /**
-         * @typedef {Object} StatusMessage
-         * @property {(message: string, type: 'loading'|'error') => void} show - Shows status message
-         * @property {() => void} hide - Hides status message
-         */
 
         /**
          * Creates a status message object with show/hide methods
@@ -767,15 +884,6 @@
         // ========================================
 
         /**
-         * @typedef {Object} ForecastFormComponent
-         * @property {() => ForecastRequestResult} createRequest - Creates and validates forecast request
-         * @property {() => void} setDefaultValues - Sets default form values
-         * @property {() => void} disable - Disables form submission
-         * @property {() => void} enable - Enables form submission
-         * @property {(callback: () => Promise<void>) => void} onSubmit - Registers form submit handler
-         */
-
-        /**
          * Creates a forecast form component
          * @param {HTMLFormElement} formElement - Form DOM element
          * @param {HTMLInputElement} dateInput - Date input element
@@ -799,12 +907,12 @@
                     return { error: 'Invalid date format. Use YYYY-MM-DD.' };
                 }
 
-                if (typeof latitude !== 'number' || latitude < -90 || latitude > 90) {
-                    return { error: 'Latitude must be between -90 and 90.' };
+                if (typeof latitude !== 'number' || latitude < CONFIG.VALIDATION.LATITUDE_MIN || latitude > CONFIG.VALIDATION.LATITUDE_MAX) {
+                    return { error: `Latitude must be between ${CONFIG.VALIDATION.LATITUDE_MIN} and ${CONFIG.VALIDATION.LATITUDE_MAX}.` };
                 }
 
-                if (typeof longitude !== 'number' || longitude < -180 || longitude > 180) {
-                    return { error: 'Longitude must be between -180 and 180.' };
+                if (typeof longitude !== 'number' || longitude < CONFIG.VALIDATION.LONGITUDE_MIN || longitude > CONFIG.VALIDATION.LONGITUDE_MAX) {
+                    return { error: `Longitude must be between ${CONFIG.VALIDATION.LONGITUDE_MIN} and ${CONFIG.VALIDATION.LONGITUDE_MAX}.` };
                 }
 
                 return {};
@@ -839,8 +947,8 @@
                     const today = new Date().toISOString().split('T')[0];
                     dateInput.value = today;
 
-                    latitudeInput.value = '40.7128';
-                    longitudeInput.value = '-74.0060';
+                    latitudeInput.value = CONFIG.DEFAULT_LOCATION.latitude.toString();
+                    longitudeInput.value = CONFIG.DEFAULT_LOCATION.longitude.toString();
                 },
                 /**
                  * Disables form submission
@@ -871,14 +979,6 @@
                 }
             };
         };
-
-        /**
-         * @typedef {Object} ForecastResultComponent
-         * @property {() => void} show - Shows forecast section
-         * @property {() => void} hide - Hides forecast section
-         * @property {(request: ForecastRequest) => void} displayInfo - Displays forecast location and date
-         * @property {(results: Array<ForecastResult>) => void} displayResults - Displays weather results
-         */
 
         /**
          * Creates a forecast result component
@@ -924,7 +1024,7 @@
                  * @returns {void}
                  */
                 displayInfo: ({ coordinates, date }) => {
-                    locationElement.textContent = `${coordinates.latitude.toFixed(4)}°N, ${coordinates.longitude.toFixed(4)}°E`;
+                    locationElement.textContent = CoordinateUtils.format(coordinates);
                     dateElement.textContent = formatDate(date);
                 },
                 /**
@@ -943,25 +1043,6 @@
                 }
             };
         };
-
-        /**
-         * @typedef {Object} AppStateComponents
-         * @property {ForecastFormComponent} forecastForm - Forecast form with button and element
-         * @property {StatusMessage} statusMessage - Status message object
-         * @property {ForecastResultComponent} forecastResult - Forecast result display components
-         * @property {WeatherService} weatherService - Weather service object
-         */
-
-        /**
-         * @typedef {Object} AppState
-         * @property {ForecastFormComponent} forecastForm - Forecast form with button and element
-         * @property {StatusMessage} statusMessage - Status message object
-         * @property {ForecastResultComponent} forecastResult - Forecast result display components
-         * @property {WeatherService} weatherService - Weather service object
-         * @property {() => void} setDefaultValues - Sets default values for all components
-         * @property {() => void} initialize - Initializes the application
-         * @property {() => Promise<void>} update - Updates forecast with registered weather service
-         */
 
         /**
          * Creates application state object with UI components
@@ -1026,7 +1107,6 @@
             };
 
             return {
-                ...components,
                 /**
                  * Sets default values for all components
                  * @returns {void}
