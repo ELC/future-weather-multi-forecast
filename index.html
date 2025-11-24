@@ -185,6 +185,13 @@
             gap: var(--spacing-md);
         }
 
+        .forecast__loading {
+            font-size: 1.1rem;
+            text-align: center;
+            padding: var(--spacing-lg);
+            color: var(--color-text-light);
+        }
+
         /* Weather Card Block */
         .weather-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -268,7 +275,7 @@
 
         .weather-card__error {
             opacity: 0.8;
-            margin-top: 1rem;
+            padding-top: var(--spacing-xs);
         }
 
         /* Responsive Design */
@@ -1079,13 +1086,27 @@
         const createWeatherService = (providers) => {
             return {
                 /**
-                 * Fetches forecasts from all providers
+                 * Fetches forecasts from all providers as an async generator
+                 * Yields each result as soon as it's available
                  * @param {ForecastRequest} request - Forecast request parameters
-                 * @returns {Promise<Array<ForecastResult>>} Array of forecast results from all providers
+                 * @returns {AsyncGenerator<ForecastResult>} Async generator yielding forecast results
                  */
-                forecast: async (request) => {
-                    const promises = providers.map(provider => provider.fetchForecast(request));
-                    return await Promise.all(promises);
+                forecastStream: async function* (request) {
+                    const indexedPromises = providers.map(async (provider, index) => ({
+                        index,
+                        result: await provider.fetchForecast(request)
+                    }));
+                    
+                    const completed = new Set();
+                    
+                    while (completed.size < indexedPromises.length) {
+                        const { index, result } = await Promise.race(
+                            indexedPromises.filter((_, i) => !completed.has(i))
+                        );
+                        
+                        completed.add(index);
+                        yield result;
+                    }
                 }
             };
         };
@@ -1185,8 +1206,19 @@
             return createElement(`
                 <article class="weather-card">
                     <span class="weather-card__service">${serviceName}</span>
-                    <p style="opacity: 0.8; padding-top: 0.5rem;">Error: ${error}</p>
+                    <p class="weather-card__error">Error: ${error}</p>
                 </article>
+            `);
+        };
+
+        /**
+         * Creates a loading message element
+         * @param {string} message - Loading message text
+         * @returns {HTMLElement} Loading message element
+         */
+        const createLoadingMessage = (message = 'Loading...') => {
+            return createElement(`
+                <div class="forecast__loading">${message}</div>
             `);
         };
 
@@ -1281,6 +1313,20 @@
                     buttonElement.disabled = false;
                 },
                 /**
+                 * Gets the current city value
+                 * @returns {string} City value
+                 */
+                getCityValue: () => {
+                    return cityInput.value.trim();
+                },
+                /**
+                 * Gets the current date value
+                 * @returns {string} Date value
+                 */
+                getDateValue: () => {
+                    return dateInput.value;
+                },
+                /**
                  * Registers form submit handler
                  * @param {() => Promise<void>} callback - Async callback to execute on form submit
                  * @returns {void}
@@ -1335,6 +1381,16 @@
                     sectionElement.classList.add('forecast--hidden');
                 },
                 /**
+                 * Displays preliminary info before geocoding completes
+                 * @param {string} city - City name
+                 * @param {string} date - ISO date string
+                 * @returns {void}
+                 */
+                displayPreliminaryInfo: (city, date) => {
+                    locationElement.textContent = city;
+                    dateElement.textContent = formatDate(date);
+                },
+                /**
                  * Displays forecast location and date
                  * @param {ForecastRequest} request - Forecast request with coordinates and date
                  * @returns {void}
@@ -1345,18 +1401,47 @@
                     dateElement.textContent = formatDate(date);
                 },
                 /**
-                 * Displays weather results
-                 * @param {Array<ForecastResult>} results - Array of forecast results to display
+                 * Shows a loading message in the forecast section
+                 * @param {string} message - Loading message text
                  * @returns {void}
                  */
-                displayResults: (results) => {
-                    const cardElements = results.map(result => 
-                        'error' in result
-                            ? createWeatherCardErrorTemplate(result)
-                            : createWeatherCardSuccessTemplate(result)
-                    );
+                showLoadingMessage: (message) => {
+                    servicesContainer.replaceChildren(createLoadingMessage(message));
+                },
+                /**
+                 * Prepares forecast section with preliminary info and loading message
+                 * @param {string} city - City name
+                 * @param {string} date - ISO date string
+                 * @returns {void}
+                 */
+                prepareForLoading: (city, date) => {
+                    locationElement.textContent = city;
+                    dateElement.textContent = formatDate(date);
+                    servicesContainer.replaceChildren(createLoadingMessage('Fetching latitude and longitude data for city...'));
+                    sectionElement.classList.remove('forecast--hidden');
+                },
+                /**
+                 * Clears all weather cards
+                 * @returns {void}
+                 */
+                clearResults: () => {
+                    servicesContainer.replaceChildren();
+                },
+                /**
+                 * Adds a single weather card
+                 * @param {ForecastResult} result - Single forecast result to add
+                 * @returns {void}
+                 */
+                addResult: (result) => {
+                    // Clear loading message on first card
+                    if (servicesContainer.children.length === 1 && servicesContainer.firstChild.tagName !== 'ARTICLE') {
+                        servicesContainer.replaceChildren();
+                    }
                     
-                    servicesContainer.replaceChildren(...cardElements);
+                    const cardElement = 'error' in result
+                        ? createWeatherCardErrorTemplate(result)
+                        : createWeatherCardSuccessTemplate(result);
+                    servicesContainer.appendChild(cardElement);
                 }
             };
         };
@@ -1367,6 +1452,20 @@
          * @returns {AppState} Application state object
          */
         const createAppState = (components) => {
+            /**
+             * Shows initial loading state with forecast section
+             * @returns {void}
+             */
+            const showInitialLoadingState = () => {
+                const { forecastForm, forecastResult, statusMessage } = components;
+                forecastForm.disable();
+                statusMessage.hide();
+                forecastResult.prepareForLoading(
+                    forecastForm.getCityValue(),
+                    forecastForm.getDateValue()
+                );
+            };
+
             /**
              * Validates and creates forecast request (async for geocoding)
              * @returns {Promise<ForecastRequest|null>} Request data or null if validation fails
@@ -1382,45 +1481,21 @@
             };
 
             /**
-             * Shows loading state
-             * @returns {void}
-             */
-            const showLoadingState = () => {
-                const { forecastForm, statusMessage, forecastResult } = components;
-                forecastForm.disable();
-                statusMessage.show('Fetching forecast data...', 'loading');
-                forecastResult.hide();
-            };
-
-            /**
-             * Fetches forecast from weather service
+             * Fetches and displays forecasts progressively using async generator
              * @param {ForecastRequest} request - Forecast request parameters
-             * @returns {Promise<Array<ForecastResult>|null>} Forecast results or null if error
+             * @returns {Promise<void>}
              */
-            const fetchForecast = async (request) => {
-                const { weatherService, statusMessage, forecastForm } = components;
+            const fetchForecastProgressive = async (request) => {
+                const { weatherService, statusMessage, forecastForm, forecastResult } = components;
                 try {
-                    return await weatherService.forecast(request);
+                    for await (const result of weatherService.forecastStream(request)) {
+                        forecastResult.addResult(result);
+                    }
                 } catch (error) {
                     statusMessage.show(`Failed to fetch forecast: ${error.message}`, 'error');
-                    return null;
                 } finally {
                     forecastForm.enable();
                 }
-            };
-
-            /**
-             * Displays forecast results
-             * @param {ForecastRequest} request - Forecast request parameters
-             * @param {Array<ForecastResult>} results - Forecast results to display
-             * @returns {void}
-             */
-            const displayForecast = (request, results) => {
-                const { statusMessage, forecastResult } = components;
-                statusMessage.hide();
-                forecastResult.displayInfo(request);
-                forecastResult.displayResults(results);
-                forecastResult.show();
             };
 
             return {
@@ -1441,19 +1516,25 @@
                     forecastForm.onSubmit(this.update);
                 },
                 /**
-                 * Updates forecast with registered weather service
+                 * Updates forecast with registered weather service using progressive loading
                  * @returns {Promise<void>}
                  */
                 update: async () => {
-                    const request = await validateRequest();
-                    if (!request) return;
-
-                    showLoadingState();
+                    const { forecastForm, forecastResult } = components;
                     
-                    const results = await fetchForecast(request);
-                    if (results) {
-                        displayForecast(request, results);
+                    showInitialLoadingState();
+                    
+                    const request = await validateRequest();
+                    if (!request) {
+                        forecastResult.hide();
+                        forecastForm.enable();
+                        return;
                     }
+
+                    forecastResult.displayInfo(request);
+                    forecastResult.showLoadingMessage('Fetching forecast data from multiple providers...');
+                    
+                    await fetchForecastProgressive(request);
                 }
             };
         };
