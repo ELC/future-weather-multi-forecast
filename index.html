@@ -26,6 +26,19 @@
             --shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
         }
 
+        /* Dark Theme */
+        [data-theme="dark"] {
+            --color-primary: #5ba3ff;
+            --color-secondary: #5cd88a;
+            --color-background: #1a1a1a;
+            --color-surface: #2d2d2d;
+            --color-text: #e0e0e0;
+            --color-text-light: #a0a0a0;
+            --color-error: #ff6b6b;
+            --color-border: #404040;
+            --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -37,6 +50,7 @@
             background-color: var(--color-background);
             color: var(--color-text);
             line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* Dashboard Block */
@@ -49,6 +63,7 @@
         .dashboard__header {
             text-align: center;
             margin-bottom: var(--spacing-lg);
+            position: relative;
         }
 
         .dashboard__title {
@@ -62,6 +77,40 @@
             font-size: 1rem;
         }
 
+        /* Theme Toggle */
+        .theme-toggle {
+            position: absolute;
+            top: 0;
+            right: 0;
+            background: var(--color-surface);
+            border: 2px solid var(--color-border);
+            border-radius: var(--border-radius);
+            padding: var(--spacing-xs) var(--spacing-sm);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--color-text);
+            box-shadow: var(--shadow);
+        }
+
+        .theme-toggle:hover {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+            transform: translateY(-2px);
+        }
+
+        .theme-toggle:active {
+            transform: translateY(0);
+        }
+
+        .theme-toggle__icon {
+            font-size: 1.2rem;
+        }
+
         /* Form Block */
         .forecast-form {
             background: var(--color-surface);
@@ -69,6 +118,7 @@
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
             margin-bottom: var(--spacing-lg);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .forecast-form__group {
@@ -96,7 +146,9 @@
             border: 1px solid var(--color-border);
             border-radius: var(--border-radius);
             font-size: 1rem;
-            transition: border-color 0.3s;
+            background-color: var(--color-surface);
+            color: var(--color-text);
+            transition: border-color 0.3s, background-color 0.3s ease, color 0.3s ease;
         }
 
         .forecast-form__input:focus {
@@ -157,6 +209,7 @@
             padding: var(--spacing-md);
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         .forecast--hidden {
@@ -284,8 +337,23 @@
                 padding: var(--spacing-sm);
             }
 
+            .dashboard__header {
+                padding-top: 3.5rem;
+            }
+
             .dashboard__title {
                 font-size: 2rem;
+            }
+
+            .theme-toggle {
+                position: absolute;
+                top: 0;
+                right: 0;
+                left: 0;
+                margin: 0;
+                border-radius: 0;
+                justify-content: center;
+                padding: var(--spacing-sm);
             }
 
             .forecast-form__group {
@@ -317,6 +385,10 @@
     <main class="dashboard">
         <!-- Dashboard Header -->
         <header class="dashboard__header">
+            <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                <span class="theme-toggle__icon" id="themeIcon">🌙</span>
+                <span id="themeText">Dark Mode</span>
+            </button>
             <h1 class="dashboard__title">Weather Forecast Dashboard</h1>
             <p class="dashboard__subtitle">Get weather forecasts from multiple sources</p>
         </header>
@@ -363,6 +435,107 @@
     </main>
 
     <script>
+        // ========================================
+        // Theme Management
+        // ========================================
+
+        /**
+         * Creates a theme manager for handling light/dark mode
+         * @returns {Object} Theme manager instance with initialize method
+         */
+        const createThemeManager = () => {
+            const cache = createCacheManager('theme_');
+            const CACHE_KEY = 'preference';
+            const THEMES = {
+                LIGHT: 'light',
+                DARK: 'dark'
+            };
+
+            /**
+             * Gets the current theme from cache or system preference
+             * @returns {string} Current theme ('light' or 'dark')
+             */
+            const getCurrentTheme = () => {
+                const savedTheme = cache.get(CACHE_KEY);
+                if (savedTheme) {
+                    return savedTheme;
+                }
+                if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                    return THEMES.DARK;
+                }
+                return THEMES.LIGHT;
+            };
+
+            /**
+             * Applies the theme to the document
+             * @param {string} theme - Theme to apply ('light' or 'dark')
+             * @returns {void}
+             */
+            const applyTheme = (theme) => {
+                if (theme === THEMES.DARK) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+                cache.set(CACHE_KEY, theme);
+            };
+
+            /**
+             * Toggles between light and dark theme
+             * @returns {string} New theme after toggle
+             */
+            const toggleTheme = () => {
+                const currentTheme = getCurrentTheme();
+                const newTheme = currentTheme === THEMES.DARK 
+                    ? THEMES.LIGHT 
+                    : THEMES.DARK;
+                applyTheme(newTheme);
+                return newTheme;
+            };
+
+            /**
+             * Updates the theme toggle button UI
+             * @param {HTMLElement} iconElement - Icon element
+             * @param {HTMLElement} textElement - Text element
+             * @param {string} theme - Current theme
+             * @returns {void}
+             */
+            const updateToggleButton = (iconElement, textElement, theme) => {
+                if (theme === THEMES.DARK) {
+                    iconElement.textContent = '☀️';
+                    textElement.textContent = 'Light Mode';
+                } else {
+                    iconElement.textContent = '🌙';
+                    textElement.textContent = 'Dark Mode';
+                }
+            };
+
+            return {
+                /**
+                 * Initializes theme on page load
+                 * @param {HTMLElement} toggleButton - Theme toggle button element
+                 * @param {HTMLElement} iconElement - Icon element
+                 * @param {HTMLElement} textElement - Text element
+                 * @returns {void}
+                 */
+                initialize: (toggleButton, iconElement, textElement) => {
+                    const theme = getCurrentTheme();
+                    applyTheme(theme);
+
+                    if (!toggleButton || !iconElement || !textElement) {
+                        return;
+                    }
+
+                    updateToggleButton(iconElement, textElement, theme);
+
+                    toggleButton.addEventListener('click', () => {
+                        const newTheme = toggleTheme();
+                        updateToggleButton(iconElement, textElement, newTheme);
+                    });
+                }
+            };
+        };
+
         // ========================================
         // Configuration
         // ========================================
@@ -425,59 +598,74 @@
         };
 
         /**
-         * LocalStorage cache utilities for geocoding results
-         * @type {Object}
+         * Creates a general-purpose LocalStorage cache manager with a specific prefix
+         * @param {string} prefix - Prefix for all cache keys in this scope
+         * @returns {Object} Cache manager instance with get, set, and remove methods
          */
-        const GeocodingCache = {
-            CACHE_PREFIX: 'geocode_',
-
+        const createCacheManager = (prefix) => {
             /**
-             * Generates cache key for a city name
-             * @param {string} cityName - Name of the city
-             * @returns {string} Cache key
+             * Generates cache key with prefix
+             * @param {string} key - Key to prefix
+             * @returns {string} Prefixed cache key
              */
-            getCacheKey: (cityName) => {
-                return `${GeocodingCache.CACHE_PREFIX}${cityName.trim().toLowerCase()}`;
-            },
+            const getCacheKey = (key) => {
+                return `${prefix}${key}`;
+            };
 
-            /**
-             * Retrieves cached geocoding result
-             * @param {string} cityName - Name of the city
-             * @returns {CoordinateData|null} Cached coordinate data or null if not found
-             */
-            get: (cityName) => {
-                try {
-                    const key = GeocodingCache.getCacheKey(cityName);
-                    const cached = localStorage.getItem(key);
-                    
-                    if (!cached) {
+            return {
+                /**
+                 * Retrieves cached value
+                 * @param {string} key - Cache key
+                 * @returns {*|null} Cached value or null if not found
+                 */
+                get: (key) => {
+                    try {
+                        const cacheKey = getCacheKey(key);
+                        const cached = localStorage.getItem(cacheKey);
+                        
+                        if (!cached) {
+                            return null;
+                        }
+
+                        const { data } = JSON.parse(cached);
+                        return data;
+                    } catch (error) {
+                        console.error(`Error reading from cache (${prefix}):`, error);
                         return null;
                     }
+                },
 
-                    const { data } = JSON.parse(cached);
-                    return data;
-                } catch (error) {
-                    console.error('Error reading from geocoding cache:', error);
-                    return null;
-                }
-            },
+                /**
+                 * Stores value in cache
+                 * @param {string} key - Cache key
+                 * @param {*} data - Data to cache
+                 * @returns {void}
+                 */
+                set: (key, data) => {
+                    try {
+                        const cacheKey = getCacheKey(key);
+                        const cacheEntry = { data };
+                        localStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+                    } catch (error) {
+                        console.error(`Error writing to cache (${prefix}):`, error);
+                        // Silently fail - cache is optional
+                    }
+                },
 
-            /**
-             * Stores geocoding result in cache
-             * @param {string} cityName - Name of the city
-             * @param {CoordinateData} data - Coordinate data to cache
-             * @returns {void}
-             */
-            set: (cityName, data) => {
-                try {
-                    const key = GeocodingCache.getCacheKey(cityName);
-                    const cacheEntry = { data };
-                    localStorage.setItem(key, JSON.stringify(cacheEntry));
-                } catch (error) {
-                    console.error('Error writing to geocoding cache:', error);
-                    // Silently fail - cache is optional
+                /**
+                 * Removes value from cache
+                 * @param {string} key - Cache key
+                 * @returns {void}
+                 */
+                remove: (key) => {
+                    try {
+                        const cacheKey = getCacheKey(key);
+                        localStorage.removeItem(cacheKey);
+                    } catch (error) {
+                        console.error(`Error removing from cache (${prefix}):`, error);
+                    }
                 }
-            }
+            };
         };
 
         /**
@@ -775,6 +963,8 @@
          */
         const createGeocodingService = () => {
             const name = 'OpenStreetMap Nominatim';
+            
+            const cache = createCacheManager('geocode_');
 
             /**
              * Builds geocoding API URL
@@ -860,8 +1050,10 @@
                  * @returns {Promise<GeocodingResult>} Coordinates or error
                  */
                 geocode: async (cityName) => {
+                    const normalizedCityName = cityName.trim().toLowerCase();
+                    
                     // Check cache first
-                    const cachedData = GeocodingCache.get(cityName);
+                    const cachedData = cache.get(normalizedCityName);
                     if (cachedData) {
                         return { data: cachedData };
                     }
@@ -874,7 +1066,7 @@
 
                     // Cache successful results
                     if ('data' in result) {
-                        GeocodingCache.set(cityName, result.data);
+                        cache.set(normalizedCityName, result.data);
                     }
 
                     return result;
@@ -1614,6 +1806,13 @@
          * @returns {void}
          */
         const initializeApp = () => {
+            const themeManager = createThemeManager();
+            themeManager.initialize(
+                document.getElementById('themeToggle'),
+                document.getElementById('themeIcon'),
+                document.getElementById('themeText')
+            );
+
             const geocodingService = createGeocodingService();
 
             const forecastForm = createForecastFormComponent(
