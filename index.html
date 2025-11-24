@@ -192,6 +192,7 @@
             padding: var(--spacing-md);
             border-radius: var(--border-radius);
             box-shadow: var(--shadow);
+            position: relative;
         }
 
         .weather-card:nth-child(2) {
@@ -202,54 +203,48 @@
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
         }
 
-        .weather-card__header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: var(--spacing-md);
-        }
-
         .weather-card__service {
-            font-size: 0.9rem;
-            opacity: 0.9;
-            font-weight: 500;
-        }
-
-        .weather-card__status {
-            font-size: 0.85rem;
-            padding: 0.25rem 0.5rem;
-            background-color: rgba(255, 255, 255, 0.2);
-            border-radius: 4px;
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 0.7rem;
+            opacity: 0.5;
+            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .weather-card__main {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-bottom: var(--spacing-md);
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-sm);
         }
 
         .weather-card__temperature {
             font-size: 3rem;
             font-weight: 300;
+            line-height: 1;
         }
 
         .weather-card__condition {
-            text-align: right;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
         }
 
         .weather-card__description {
             font-size: 1.2rem;
-            margin-bottom: var(--spacing-xs);
         }
 
         .weather-card__icon {
-            font-size: 2rem;
+            font-size: 2.5rem;
+            line-height: 1;
         }
 
         .weather-card__details {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(4, 1fr);
             gap: var(--spacing-sm);
             padding-top: var(--spacing-sm);
             border-top: 1px solid rgba(255, 255, 255, 0.2);
@@ -262,8 +257,8 @@
 
         .weather-card__detail-label {
             font-size: 0.85rem;
-            opacity: 0.8;
-            margin-bottom: 0.25rem;
+            opacity: 0.7;
+            margin-bottom: 0.2rem;
         }
 
         .weather-card__detail-value {
@@ -297,11 +292,15 @@
             .weather-card__main {
                 flex-direction: column;
                 text-align: center;
+                gap: var(--spacing-xs);
             }
 
             .weather-card__condition {
                 text-align: center;
-                margin-top: var(--spacing-sm);
+            }
+
+            .weather-card__details {
+                grid-template-columns: repeat(2, 1fr);
             }
         }
     </style>
@@ -1147,15 +1146,12 @@
         }) => {
             return createElement(`
                 <article class="weather-card">
-                    <header class="weather-card__header">
-                        <h3 class="weather-card__service">${serviceName}</h3>
-                        <span class="weather-card__status">Active</span>
-                    </header>
+                    <span class="weather-card__service">${serviceName}</span>
                     <div class="weather-card__main">
                         <div class="weather-card__temperature">${temperature}°C</div>
                         <div class="weather-card__condition">
-                            <div class="weather-card__description">${description}</div>
                             <div class="weather-card__icon">${icon}</div>
+                            <div class="weather-card__description">${description}</div>
                         </div>
                     </div>
                     <div class="weather-card__details">
@@ -1188,11 +1184,8 @@
         const createWeatherCardErrorTemplate = ({ serviceName, error }) => {
             return createElement(`
                 <article class="weather-card">
-                    <header class="weather-card__header">
-                        <h3 class="weather-card__service">${serviceName}</h3>
-                        <span class="weather-card__status">Error</span>
-                    </header>
-                    <p style="opacity: 0.8; margin-top: 1rem;">Error: ${error}</p>
+                    <span class="weather-card__service">${serviceName}</span>
+                    <p style="opacity: 0.8; padding-top: 0.5rem;">Error: ${error}</p>
                 </article>
             `);
         };
