@@ -373,7 +373,7 @@
          */
         const CONFIG = {
             DEFAULT_LOCATION: {
-                city: 'New York'
+                city: 'Capitán Sarmiento'
             },
             OPEN_METEO: {
                 API_URL: 'https://api.open-meteo.com/v1/forecast',
@@ -421,6 +421,62 @@
             roundToDecimal: (value, decimals = CONFIG.FORMATTING.TEMPERATURE_DECIMALS) => {
                 const factor = Math.pow(10, decimals);
                 return Math.round(value * factor) / factor;
+            }
+        };
+
+        /**
+         * LocalStorage cache utilities for geocoding results
+         * @type {Object}
+         */
+        const GeocodingCache = {
+            CACHE_PREFIX: 'geocode_',
+
+            /**
+             * Generates cache key for a city name
+             * @param {string} cityName - Name of the city
+             * @returns {string} Cache key
+             */
+            getCacheKey: (cityName) => {
+                return `${GeocodingCache.CACHE_PREFIX}${cityName.trim().toLowerCase()}`;
+            },
+
+            /**
+             * Retrieves cached geocoding result
+             * @param {string} cityName - Name of the city
+             * @returns {CoordinateData|null} Cached coordinate data or null if not found
+             */
+            get: (cityName) => {
+                try {
+                    const key = GeocodingCache.getCacheKey(cityName);
+                    const cached = localStorage.getItem(key);
+                    
+                    if (!cached) {
+                        return null;
+                    }
+
+                    const { data } = JSON.parse(cached);
+                    return data;
+                } catch (error) {
+                    console.error('Error reading from geocoding cache:', error);
+                    return null;
+                }
+            },
+
+            /**
+             * Stores geocoding result in cache
+             * @param {string} cityName - Name of the city
+             * @param {CoordinateData} data - Coordinate data to cache
+             * @returns {void}
+             */
+            set: (cityName, data) => {
+                try {
+                    const key = GeocodingCache.getCacheKey(cityName);
+                    const cacheEntry = { data };
+                    localStorage.setItem(key, JSON.stringify(cacheEntry));
+                } catch (error) {
+                    console.error('Error writing to geocoding cache:', error);
+                    // Silently fail - cache is optional
+                }
             }
         };
 
@@ -804,10 +860,24 @@
                  * @returns {Promise<GeocodingResult>} Coordinates or error
                  */
                 geocode: async (cityName) => {
+                    // Check cache first
+                    const cachedData = GeocodingCache.get(cityName);
+                    if (cachedData) {
+                        return { data: cachedData };
+                    }
+
+                    // Cache miss - fetch from API
                     const url = buildApiUrl(cityName);
                     const fetchResult = await fetchAndParseResults(url);
                     const validationResult = validateResults(fetchResult, cityName);
-                    return transformLocationData(validationResult);
+                    const result = transformLocationData(validationResult);
+
+                    // Cache successful results
+                    if ('data' in result) {
+                        GeocodingCache.set(cityName, result.data);
+                    }
+
+                    return result;
                 }
             };
         };
@@ -1293,7 +1363,7 @@
                  * @returns {void}
                  */
                 setDefaultValues: () => {
-                    const today = new Date().toISOString().split('T')[0];
+                    const today = '2025-12-06';
                     dateInput.value = today;
 
                     cityInput.value = CONFIG.DEFAULT_LOCATION.city;
